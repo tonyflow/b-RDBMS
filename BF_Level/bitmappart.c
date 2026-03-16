@@ -13,7 +13,7 @@ putc((i & 1) + '0', f);
 
 /* ---------------------- */
 
-//ta offset KAI sthn isavalid KAI sthn set diaxeirishs tou bitmap tha eimai apo 1 merxri 32 kai OXI apo 0 mexri 31
+//the offsets in both isvalid and set for bitmap management will be from 1 to 32 and NOT from 0 to 31
 
 int isvalid(int bitmappart,int offset){
 	
@@ -22,16 +22,16 @@ int isvalid(int bitmappart,int offset){
 	printf("offset is %d and (offset-1) is %d\n",offset,offset-1);
 	
 	if(((bitmappart & (1 << (31 - (offset - 1))))==0))
-		return 0;	//an i AND praxi bgalei mono midenika,tote afou stin offset thesi eixame 1,sto bitmap tha exoume 0
+		return 0;	//if the AND operation produces only zeros, then since we had 1 at the offset position, the bitmap has 0
 	else
 		return 1;
 } 
 
 void set(int* bitmappart,int offset,int what){
 	if(what==1)
-		 *bitmappart = *bitmappart | (1 << (31 - (offset - 1))); // apo 0 se 1 
+		 *bitmappart = *bitmappart | (1 << (31 - (offset - 1))); // from 0 to 1
 	else
-		*bitmappart = *bitmappart ^ (1 << (31 - (offset - 1))); 	// apo 1 se 0
+		*bitmappart = *bitmappart ^ (1 << (31 - (offset - 1))); 	// from 1 to 0
 }
 
 

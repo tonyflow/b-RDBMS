@@ -7,22 +7,22 @@
 
 /////////////BITMAP FUNCTIONS/////////////////
 
-//ta offset KAI sthn isavalid KAI sthn set diaxeirishs tou bitmap tha eimai apo 1 merxri 32 kai OXI apo 0 mexri 31
+//the offsets in both isvalid and set for bitmap management will be from 1 to 32 and NOT from 0 to 31
 
 int isvalid(int bitmappart,int offset){
 	
 	
 	if(((bitmappart & (1 << (31 - (offset - 1))))==0))
-		return 0;	//an i AND praxi bgalei mono midenika,tote afou stin offset thesi eixame 1,sto bitmap tha exoume 0
+		return 0;	//if the AND operation produces only zeros, then since we had 1 at the offset position, the bitmap has 0
 	else
 		return 1;
 } 
 
 void set(int* bitmappart,int offset,int what){
 	if(what==1)
-		 *bitmappart = *bitmappart | (1 << (31 - (offset - 1))); // apo 0 se 1 
+		 *bitmappart = *bitmappart | (1 << (31 - (offset - 1))); // from 0 to 1
 	else
-		*bitmappart = *bitmappart ^ (1 << (31 - (offset - 1))); 	// apo 1 se 0
+		*bitmappart = *bitmappart ^ (1 << (31 - (offset - 1))); 	// from 1 to 0
 }
 
 
@@ -36,46 +36,46 @@ int flru(int thesi,int valid_block,int fileDesc,int dirty_value,char** blockBuf)
 	FILE* fp;
 	int min;
 	
-	if(thesi==-1){//politiki lru
-		for(i=0;i<BF_BUFFER_SIZE;i++)//psaxnoume tin proti thesi gia tin opoia o pinned_counter einai 0,oste na ginei i arxikopoiisi gia tin euresi
-					     //tou elaxistou lru_counter
+	if(thesi==-1){//LRU policy
+		for(i=0;i<BF_BUFFER_SIZE;i++)//search for the first position where pinned_counter is 0, to initialize the search
+					     //for the minimum lru_counter
 			if(memory[i].pinned_counter==0){				
 				min=memory[i].lru_counter;
 				thesi=i;
 				break;
 			}
 
-		if(thesi==-1){//an ola ta block tis endiamesis mnimis exoun pinned_counter!=0
+		if(thesi==-1){//if all blocks in buffer memory have pinned_counter!=0
 			BF_errno=BFE_NOBUF;
 			return BFE_NOBUF;
 		}
 
-		for(i=0;i<BF_BUFFER_SIZE;i++)//psaxnoume to ligotero prosfata xrisimopoiimeno block(to opoio den einai pinned)
+		for(i=0;i<BF_BUFFER_SIZE;i++)//search for the least recently used block (that is not pinned)
 			if(memory[i].lru_counter<min && memory[i].pinned_counter==0){
 				min=memory[i].lru_counter;
 				thesi=i;
 			}
 	}
 	
-	if(memory[thesi].dirty==1){//an to block einai bromismeno
+	if(memory[thesi].dirty==1){//if the block is dirty
 		for(i=0;i<MAXOPENFILES;i++)
 			if(strcmp(memory[thesi].filename,openfiles[i].filename)==0){
 				fp=openfiles[i].fp;
 				break;
 			}	
-		fseek(fp,(memory[thesi].blockNum+1)*BF_BLOCK_SIZE,SEEK_SET);//pame stin thesi pou brisketai to block sto arxeio(theoroume oti to blockNum pairnei times 1,2..)																
+		fseek(fp,(memory[thesi].blockNum+1)*BF_BLOCK_SIZE,SEEK_SET);//seek to the position of the block in the file (assuming blockNum takes values 1,2..)																
 		fflush(fp);
-		fwrite(midmem+thesi*BF_BLOCK_SIZE*sizeof(char),1,BF_BLOCK_SIZE,fp);//grapsimo tou block sto disko
+		fwrite(midmem+thesi*BF_BLOCK_SIZE*sizeof(char),1,BF_BLOCK_SIZE,fp);//write the block to disk
 		fflush(fp);
 	}
 	
 	fflush(openfiles[fileDesc].fp);
-	fseek(openfiles[fileDesc].fp,(valid_block+1)*BF_BLOCK_SIZE,SEEK_SET);//pame sti thesi tou arxeiou pou brisketai to block
+	fseek(openfiles[fileDesc].fp,(valid_block+1)*BF_BLOCK_SIZE,SEEK_SET);//seek to the position of the block in the file
 
-	fread(midmem+thesi*BF_BLOCK_SIZE*sizeof(char),1,BF_BLOCK_SIZE,openfiles[fileDesc].fp);//to fernoume stin katallili thesi stin endiamesi mnimi
+	fread(midmem+thesi*BF_BLOCK_SIZE*sizeof(char),1,BF_BLOCK_SIZE,openfiles[fileDesc].fp);//bring it to the appropriate position in buffer memory
 	fflush(openfiles[fileDesc].fp);
 
-	//enimeronoume tin katallili thesi tou pinaka memory me tis plirofories tou block
+	//update the appropriate position of the memory array with the block's information
 	memory[thesi].blockNum=valid_block;
 	lru++;
 	memory[thesi].lru_counter=lru;

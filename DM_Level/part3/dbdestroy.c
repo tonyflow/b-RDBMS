@@ -6,7 +6,7 @@ int main(int argc, char* argv[]){
         char* dbname;
 
         if(argc!=2){
-                printf("Xrhsh: %s dbdestroy \n",argv[0]);
+                printf("Usage: %s dbdestroy \n",argv[0]);
                 return(1);
         }
 

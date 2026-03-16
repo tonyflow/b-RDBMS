@@ -17,7 +17,7 @@ int main(int argc, char* argv[]){
         char name[2*MAXNAME+sizeof(char)];
 
         if(argc!=2){
-                printf("Xrhsh: %s dbname \n",argv[0]);
+                printf("Usage: %s dbname \n",argv[0]);
                 return(1);
         }
 
@@ -25,37 +25,37 @@ int main(int argc, char* argv[]){
         sprintf(command,"mkdir %s",dbname);
         system(command);
         if(chdir(dbname)!=0){
-                printf("Den einai dynath h dhmiourgia ths bashs\n");
+                printf("Unable to create the database\n");
                 return(2);
         }
         
-        /* Dhmiourgia twn pinakwn relCat kai attrCat me xrhsh twn synarthsewn ÇF_CreateFile */
+        /* Create the relCat and attrCat tables using the HF_CreateFile functions */
         HF_Init();
         if(HF_CreateFile(RELCAT)!= HFE_OK){
-            printf("Den einai dynath h dhmiourgia tou arxeiou RELCAT\n");        
+            printf("Unable to create the RELCAT file\n");        
             exit(1); 
         }
         if(HF_CreateFile(ATTRCAT)!= HFE_OK){
-            printf("Den einai dynath h dhmiourgia tou arxeiou ATTRCAT\n");
+            printf("Unable to create the ATTRCAT file\n");
             exit(1);
         }
         if((relfileDesc=HF_OpenFile(RELCAT))<0){
-            printf("Den einai dynato to anoigma tou RELCAT\n");
+            printf("Unable to open RELCAT\n");
             exit(1);
         }
         if((attrfileDesc=HF_OpenFile(ATTRCAT))<0){
-            printf("Den einai dynato to anoigma tou ATTRCAT\n");
+            printf("Unable to open ATTRCAT\n");
             exit(1);
         }
             
-        //Desmeuw mnhmh gia tous deiktes
+        //Allocate memory for the pointers
         if((relDescptr=malloc(sizeof(relDesc)))==NULL){
             return -1;
         }
         if((attrDescptr=malloc(sizeof(attrDesc)))==NULL){
             return -1;
         }
-        //Emhmerwnw ton pinaka relcat
+        //Update the relcat table
         strcpy(relDescptr->relname,"relcat");                        
         relDescptr->relwidth=sizeof(relDesc);
         relDescptr->attrcnt=5;
@@ -77,7 +77,7 @@ int main(int argc, char* argv[]){
         } 
         free(relDescptr);
                                          
-        //Emhmerwnw ton pinaka attrcat gia to pedio relname
+        //Update the attrcat table for the relname field
         strcpy(attrDescptr->relname,"relcat");
         sprintf(name,"%s.%s","relcat","relname");
         strcpy(attrDescptr->attrname,name);
@@ -94,7 +94,7 @@ int main(int argc, char* argv[]){
             return -1;
         }
         
-        //Emhmerwnw ton pinaka attrcat gia to pedio relwidth
+        //Update the attrcat table for the relwidth field
         strcpy(attrDescptr->relname,"relcat");
         sprintf(name,"%s.%s","relcat","relwidth");
         strcpy(attrDescptr->attrname,name);
@@ -110,7 +110,7 @@ int main(int argc, char* argv[]){
             return -1;
         }
         
-        //Emhmerwnw ton pinaka attrcat gia to pedio attrcnt
+        //Update the attrcat table for the attrcnt field
         strcpy(attrDescptr->relname,"relcat");
         sprintf(name,"%s.%s","relcat","attrcnt");
         strcpy(attrDescptr->attrname,name);
@@ -126,7 +126,7 @@ int main(int argc, char* argv[]){
             return -1;
         }
         
-        //Emhmerwnw ton pinaka attrcat gia to pedio indexcnt
+        //Update the attrcat table for the indexcnt field
         strcpy(attrDescptr->relname,"relcat");
         sprintf(name,"%s.%s","relcat","indexcnt");
         strcpy(attrDescptr->attrname,name);
@@ -142,7 +142,7 @@ int main(int argc, char* argv[]){
             return -1;
         }
         
-        //Emhmerwnw ton pinaka attrcat gia to pedio reccnt
+        //Update the attrcat table for the reccnt field
         strcpy(attrDescptr->relname,"relcat");
         sprintf(name,"%s.%s","relcat","reccnt");
         strcpy(attrDescptr->attrname,name);
@@ -158,8 +158,8 @@ int main(int argc, char* argv[]){
             return -1;
         }
         
-        //Emhmerwnw ton pinaka attrcat gia ta pedia tou
-        //Pedio relname
+        //Update the attrcat table for its fields
+        //Field relname
         strcpy(attrDescptr->relname,"attrcat");
         sprintf(name,"%s.%s","attrcat","relname");
         strcpy(attrDescptr->attrname,name);
@@ -175,7 +175,7 @@ int main(int argc, char* argv[]){
             return -1;
         }
         
-        //Pedio attrname
+        //Field attrname
         strcpy(attrDescptr->relname,"attrcat");
         sprintf(name,"%s.%s","attrcat","attrname");
         strcpy(attrDescptr->attrname,name);
@@ -191,7 +191,7 @@ int main(int argc, char* argv[]){
             return -1;
         }
         
-        //Pedio offset
+        //Field offset
         strcpy(attrDescptr->relname,"attrcat");
         sprintf(name,"%s.%s","attrcat","offset");
         strcpy(attrDescptr->attrname,name);
@@ -207,7 +207,7 @@ int main(int argc, char* argv[]){
             return -1;
         }
         
-        //Pedio attrlength
+        //Field attrlength
         strcpy(attrDescptr->relname,"attrcat");
         sprintf(name,"%s.%s","attrcat","attrlength");
         strcpy(attrDescptr->attrname,name);
@@ -223,7 +223,7 @@ int main(int argc, char* argv[]){
             return -1;
         }
         
-        //Pedio attrtype
+        //Field attrtype
         strcpy(attrDescptr->relname,"attrcat");
         sprintf(name,"%s.%s","attrcat","attrtype");
         strcpy(attrDescptr->attrname,name);
@@ -239,7 +239,7 @@ int main(int argc, char* argv[]){
             return -1;
         }
         
-        //Pedio valuecnt
+        //Field valuecnt
         strcpy(attrDescptr->relname,"attrcat");
         sprintf(name,"%s.%s","attrcat","valuecnt");
         strcpy(attrDescptr->attrname,name);
@@ -255,7 +255,7 @@ int main(int argc, char* argv[]){
             return -1;
         }
         
-        //Pedio indexed
+        //Field indexed
         strcpy(attrDescptr->relname,"attrcat");
         sprintf(name,"%s.%s","attrcat","indexed");
         strcpy(attrDescptr->attrname,name);
@@ -271,7 +271,7 @@ int main(int argc, char* argv[]){
             return -1;
         }
         
-        //Pedio indexno
+        //Field indexno
         strcpy(attrDescptr->relname,"attrcat");
         sprintf(name,"%s.%s","attrcat","indexno");
         strcpy(attrDescptr->attrname,name);
@@ -287,7 +287,7 @@ int main(int argc, char* argv[]){
             return -1;
         }
         
-        //Pedio min
+        //Field min
         strcpy(attrDescptr->relname,"attrcat");
         sprintf(name,"%s.%s","attrcat","indexno");
         strcpy(attrDescptr->attrname,name);
@@ -303,7 +303,7 @@ int main(int argc, char* argv[]){
             return -1;
         }
         
-        //Pedio max
+        //Field max
         strcpy(attrDescptr->relname,"attrcat");
         sprintf(name,"%s.%s","attrcat","indexno");
         strcpy(attrDescptr->attrname,name);

@@ -91,9 +91,9 @@ int UT_create(int argc,char* argv[]){
 	char *start,*stringlength;
 	char numbers[]="1234567890";
 
-	//prepei na elegksoume an to dothen relname(argv[1]) yparxei HDH sto RELCAT
-	//an yparxei epistrefoume lathos diaforetika proxorame sthn eisagogh katallhlhs eggrafhs sta RELCAT KAI ATTRCAT
-	//gia na doume an yparxei eggrafh me onoma "relname" sto RELCAT ksekiname skanarisma me thn HF_OpenFileScan() sto RELCAT
+	//we need to check if the given relname (argv[1]) already exists in RELCAT
+	//if it exists we return an error, otherwise we proceed to insert the appropriate record in RELCAT AND ATTRCAT
+	//to check if a record named "relname" exists in RELCAT we start a scan with HF_OpenFileScan() on RELCAT
 	
 	if((scanDesc=HF_OpenFileScan(relfd,sizeof(relDesc),'c',MAXNAME,0,EQUAL,argv[1]))<0){
 		HF_PrintError("Problem while opening file scan");
@@ -102,7 +102,7 @@ int UT_create(int argc,char* argv[]){
 	
 	printf("initaited scan\n");
 
-	//desmeush xorou gia to rec
+	//allocate memory for rec
 	rec=malloc(sizeof(relDesc));
 
 	check=HF_FindNextRec(scanDesc,rec);
@@ -126,13 +126,13 @@ int UT_create(int argc,char* argv[]){
 	printf("found is %d\n",found);
 
 
-	if(found==0){ //h eggrafh den brethike opote proxorame sthn enhmerosh ton arxeio RELCAT kai ATTRCAT
+	if(found==0){ //the record was not found so we proceed to update the files RELCAT and ATTRCAT
 		
-		//enhmerosh tou arxeiou RELCAT
+		//update the RELCAT file
 		strcpy(newrelentry.relname,argv[1]);	
 
 		newrelentry.relwidth=0;
-		for(i=3;i<argc;i=i+2){        //pername to onoma ths entolhs, to onoma ths sxeshs kai to attr#
+		for(i=3;i<argc;i=i+2){        //skip the command name, the relation name and the attr#
 			if(strcmp(argv[i],"'i'")==0)
 				newrelentry.relwidth=newrelentry.relwidth+sizeof(int);
 			if(strcmp(argv[i],"'f'")==0)
@@ -140,12 +140,12 @@ int UT_create(int argc,char* argv[]){
 			if(strpbrk(argv[i],"c")!=NULL){
 				sscanf(argv[i],"'c%d'",&STRINGLENGTH);
 				printf("%d\n",STRINGLENGTH);				
-				newrelentry.relwidth=newrelentry.relwidth+STRINGLENGTH*sizeof(char);  //orizoume katallhla to relwidth;
+				newrelentry.relwidth=newrelentry.relwidth+STRINGLENGTH*sizeof(char);  //set relwidth appropriately;
 			}
 		}		
 		newrelentry.attrcnt=((argc/2)-1);
 
-		newattrentry=malloc(((argc/2)-1)*sizeof(attrDesc));  //desmeush xorou gia ton pinaka ton orismaton pou tha grapsoume sto ATTRCAT
+		newattrentry=malloc(((argc/2)-1)*sizeof(attrDesc));  //allocate memory for the array of attributes to be written to ATTRCAT
 
 		printf("%d\n",newrelentry.attrcnt);
 
@@ -155,7 +155,7 @@ int UT_create(int argc,char* argv[]){
 			HF_PrintError("Problem with inserting record for RELCAT");
 			exit(3);
 		}
-		//enhmerosh tou arxeiou ATTRCAT
+		//update the ATTRCAT file
 		printf("%d\n",((argc/2)-1)*sizeof(attrDesc));
 		
 		j=2;
@@ -178,7 +178,7 @@ int UT_create(int argc,char* argv[]){
 			if(strpbrk(argv[j+1],"c")!=NULL){
 				sscanf(argv[i],"'c%d'",&STRINGLENGTH);
 				printf("%d\n",STRINGLENGTH);	
-				newattrentry[i].attrlength=STRINGLENGTH*sizeof(char);  //orizoume katallhla to relwidth;
+				newattrentry[i].attrlength=STRINGLENGTH*sizeof(char);  //set relwidth appropriately;
 				newattrentry[i].attrtype='c';
 			}
 			
@@ -200,7 +200,7 @@ int UT_create(int argc,char* argv[]){
 		
 
 		printf("relname is %s\n",argv[1]);
-		//afou exei ginei h enhmerosh ton ATTRCAT kai RELCAT dhmiourgoume to RELNAME
+		//after updating ATTRCAT and RELCAT we create the RELNAME file
 		if(HF_CreateFile(argv[1])<0){
 			HF_PrintError("Problem with HF_CreateFile of RELANAME");
 			exit(1);
@@ -224,11 +224,11 @@ int UT_buildindex(int argc,char* argv[]){
 	int found;
 	
 
-	//psaxnoume na broume an to ATTRNAME tou RELNAME pou mas dothike san orisma einai INDEXED
-	//gia na to broume auto anoigoume skanarisma sto ATTRCAT me to krithrio to dosmeno RELNAME
-	//kai sthn eggrafh pou anaktate(kai plhrh ta dosmena krithria) psaxnoume na broume an to ATTRNAME ths
-	//einai idio me to dosmeno kai an to INDEXED ths einai "0",giati mono etsi mporei na ftiaxtei NEO eurethrio
-	//me bash to sygkekrimeno pedio
+	//search to find if the ATTRNAME of the RELNAME given as argument is INDEXED
+	//to find this we open a scan on ATTRCAT with the given RELNAME as criterion
+	//and in the retrieved record (that matches the given criteria) we check if its ATTRNAME
+	//is the same as the given one and if its INDEXED field is "0", because only then can a NEW index
+	//be created based on this specific field
 	if((scanDescattr=HF_OpenFileScan(attrfd,sizeof(attrDesc),'c',MAXNAME,0,EQUAL,argv[1]))<0)
 		HF_PrintError("Problem while opening file scan");
 	
@@ -236,8 +236,8 @@ int UT_buildindex(int argc,char* argv[]){
 
 	check=HF_FindNextRec(scanDescattr,(char*)&recattr);
 	while(check!=HFE_EOF){
-		//anti na broume an to ATTRNAME pou mas dinete einai INDEXED, arkei na broume an to ATTRNAME pou 
-		//mas dinete DEN einai INDEXED.
+		//instead of finding if the given ATTRNAME is INDEXED, it suffices to find if the given ATTRNAME
+		//is NOT INDEXED.
 		if(strcmp(recattr.attrname,argv[2])==0 && recattr.indexed==0){
 			recattr.indexed=1;	
 			if(HF_DeleteRec(attrfd,check,sizeof(attrDesc))<0)
@@ -253,9 +253,9 @@ int UT_buildindex(int argc,char* argv[]){
 		HF_PrintError("Error while closing scan");	
 
 	if(found==1){
-		//anoigoume deutero skanarisma sto RELCAT gia na broume thn sxetikh eggrafh kai na thn enhmerosoume
-		//ta pedia RELNAME,RELWIDTH kai ATTRCNT tou RELCAT opos kai ta RELNAME,ATTRNAME,OFFSET,ATTRLENGTH kai ATTRTYPE
-		//tou ATTRCAT paramenoun idia...
+		//open a second scan on RELCAT to find the relevant record and update it
+		//the fields RELNAME,RELWIDTH and ATTRCNT of RELCAT as well as RELNAME,ATTRNAME,OFFSET,ATTRLENGTH and ATTRTYPE
+		//of ATTRCAT remain the same...
 
 		if((scanDescrel=HF_OpenFileScan(relfd,sizeof(relDesc),'c',MAXNAME,0,EQUAL,argv[1]))<0)
 			HF_PrintError("Problem while opening file scan");
@@ -275,17 +275,17 @@ int UT_buildindex(int argc,char* argv[]){
 		if(HF_CloseFileScan(scanDescrel)<0)
 			HF_PrintError("Error while closing scan");
 	
-		//enhmerosh tou auksontos arithmou tou neodhmiourgithentos eurethriou 
+		//update the sequential number of the newly created index
 		recattr.indexno=(recrel.indexcnt)+1;
 		
-		//dhmiourgoume to eurethrio
+		//create the index
 		if(AM_CreateIndex(argv[1],recrel.indexcnt,recattr.attrtype,recattr.attrlength)<0){
 			AM_PrintError("Error while creating new index");
 		}
 
 		recrel.indexcnt++;
 
-		//egrafh ton enhmeromenon eggrafon sto arxeio
+		//write the updated records to the file
 		if(HF_InsertRec(relfd,(char*)(&recrel),sizeof(relDesc))<0){
 			HF_PrintError("Problem with inserting record for RELCAT");
 			exit(3);
@@ -312,7 +312,7 @@ int UT_destroy(int argc,char* argv[]){
 	relDesc recrel;
 	int i;
 	
-	//SKANARISMA TOU RELCAT	
+	//SCAN RELCAT
 	if((scanDescrel=HF_OpenFileScan(relfd,sizeof(relDesc),'c',MAXNAME,0,EQUAL,argv[1]))<0)
 			HF_PrintError("Problem while opening file scan");
 
@@ -335,7 +335,7 @@ int UT_destroy(int argc,char* argv[]){
 	if(HF_CloseFileScan(scanDescrel)<0)
 		HF_PrintError("Error while closing scan");
 
-	//SKANARISMA TOU ATTRCAT
+	//SCAN ATTRCAT
 	if((scanDescattr=HF_OpenFileScan(attrfd,sizeof(attrDesc),'c',MAXNAME,0,EQUAL,argv[1]))<0)
 		HF_PrintError("Problem while opening file scan");
 	
@@ -392,26 +392,26 @@ int DM_select(int argc, char* argv[]){
 	
 	relDesc recrel;
 	attrDesc recattr;
-	int HFScanDesc;    //anagnristiko saroshs tou relname
+	int HFScanDesc;    //scan descriptor for relname
 	int check;
 	int recId;
 	int scanDescattr,scanDescrel,scanDescindex;
-	int indexfd;       //anagnoristiko arxeiou eurethriou (open file)
-	int rel1fd;         //anagnoristiko arxeiou relname (open file)
-	int tempfd;        //anagnoristiko prosorinou arxeiou eisagoghs ton proballomenon apotelesmaton
+	int indexfd;       //index file descriptor (open file)
+	int rel1fd;         //relname file descriptor (open file)
+	int tempfd;        //temporary file descriptor for inserting projected results
 	char *record;
-	char *projectedrecord;// eggrafh pou periexei mono ta insteresting fields
-	char** utcargs;    //pinakas mesa ston opoion tha ftiaksoume ta orismata ths UT_Create
-						//kai tha ton perasoume san deutero orisma se auth
+	char *projectedrecord;// record containing only the interesting fields
+	char** utcargs;    //array in which we build the arguments for UT_Create
+						//and pass it as the second argument to that function
 
 	char* utdargs[3];
 	char buffer[]="TEMP";
 	char* onomasxeshs;
 	NOI *INF;
-	int recsize=0; //megethos kathe probllomenhs eggrafhs
+	int recsize=0; //size of each projected record
 	int i,j,k;
 	int found;
-	int utcargc;   //to argc ths UT_Create
+	int utcargc;   //the argc for UT_Create
 	int output_file_exists=0;
 	int start,finish;
 	char telestes[]="><=";
@@ -420,14 +420,14 @@ int DM_select(int argc, char* argv[]){
 	int newoffset=0;   //offset in TEMP
 	int numberint;
 	float numberfloat;
-	//periptosh opou h select kalestike me sxesh.pedio
+	//case where select was called with relation.field
 	if(argc<6){
 		printf("TOO FEW ARGUMENTS\n");
 		return 1;
 	}
 	
-	//an yparxei <WHERE condition> tha prepei na elegksoume an to onoma_sxeshs_epiloghs
-	//einai idio me to onoma ths proballomenhs sxeshs
+	//if there is a <WHERE condition> we need to check if the selection relation name
+	//is the same as the projected relation name
 	if(strpbrk(argv[argc-2],telestes)!=NULL && strcmp(argv[2],argv[argc-4])){
 		printf("SELECTION'S RELNAME DIFFERS FROM PROJETED RELATIONS' NAMES\n");
 		return 1;
@@ -438,9 +438,9 @@ int DM_select(int argc, char* argv[]){
 	else
 		finish=argc-1;
 
-	//SKANARISMA TOU RELCAT
-	//elegxos an to relname yparxei sto RELCAT
-	if(atoi(argv[1])==0){   //an h anaparastash se int tou argv[1] einai 0 tote mas exei dothei output file	
+	//SCAN RELCAT
+	//check if relname exists in RELCAT
+	if(atoi(argv[1])==0){   //if the int representation of argv[1] is 0 then we were given an output file	
 		onomasxeshs=argv[3];
 		utcargc=2*atoi(argv[2])+2;
 		noo=atoi(argv[2]);
@@ -473,19 +473,19 @@ int DM_select(int argc, char* argv[]){
 		HF_PrintError("SELECT : Error while closing scan");
 
 	record=malloc(recrel.relwidth*sizeof(char));
-	//efoson o parser katalabenei pote to erotima einai typou epiloghs (kai kalei thn DM_Select()) auto shmenei oti
-	//san orismata sthn synarthsh DM_Select() mpenoune MONO idia onomata proballomenon sxeseon
-	//kai emeis apla prepei na elegxoume an ta pedia ton proballomenon sxeseon einai ontos pedia 
-	//ton sxeseon meso mias saroshs sto ATTRCAT
+	//since the parser determines when the query is a selection type (and calls DM_Select()) this means that
+	//as arguments to DM_Select() ONLY identical projected relation names are passed
+	//and we simply need to check if the projected relation fields are actually fields 
+	//of the relations via a scan on ATTRCAT
 	
-	//me thn "for" anatrexoume OLA ta pedia ton proballomenon sxeseon
-	//kai gia kathe ena apo auta elegxoume an yparxei sto ATTRCAT me skanarisma autou
+	//with the "for" loop we iterate over ALL the projected relation fields
+	//and for each one we check if it exists in ATTRCAT by scanning it
 	
 	
-	//prepei na dhmiourgisoume ton pinaka pou tha perasoume san
-	//orisma sthn UT_Create().. dld ton pinaka utcargs[][]
+	//we need to create the array that we will pass as
+	//argument to UT_Create().. i.e. the utcargs[][] array
 	
-	//desmeush xorou gia ton pinaka utcargs
+	//allocate memory for the utcargs array
 	utcargs=malloc(utcargc*sizeof(char*));
 	
 	for(i=0;i<utcargc;i++)
@@ -498,11 +498,11 @@ int DM_select(int argc, char* argv[]){
 	else
 		sprintf(utcargs[1],"%s",buffer);
 
-	//desmeush xorou gia ton pinaka ton INF
+	//allocate memory for the INF array
 	
 	INF=malloc(noo*sizeof(NOI));
 
-	//desmeush xorou gia ton pinaka utdargs
+	//allocate memory for the utdargs array
 
 	for(i=0;i<3;i++)
 		utdargs[i]=malloc(256*sizeof(char));
@@ -520,19 +520,19 @@ int DM_select(int argc, char* argv[]){
 		
 		found=0;
 	
-		//SKANARISMA TOU ATTRCAT
+		//SCAN ATTRCAT
 		if((scanDescattr=HF_OpenFileScan(attrfd,sizeof(attrDesc),'c',MAXNAME,0,EQUAL,onomasxeshs))<0)
 			HF_PrintError("Problem while opening file scan");
 		
 		check=HF_FindNextRec(scanDescattr,(char*)&recattr);
 			
 		while(check!=HFE_EOF){
-			//brikame to probalomeno pedio san pedio tou relname
+			//found the projected field as a field of relname
 			if(strcmp(recattr.attrname,argv[i])==0){
 				recsize+=recattr.attrlength;
 				found=1;
 				
-				///parallhla kataskeuazoume kai ton pinaka orismaton ths UT_Create - enarksh kataskeuhs
+				///simultaneously we build the UT_Create arguments array - start of construction
 				sprintf(utcargs[j],"%s",recattr.attrname);
 				j++;
 				if(recattr.attrtype=='c')
@@ -540,7 +540,7 @@ int DM_select(int argc, char* argv[]){
 				else
 					sprintf(utcargs[j],"'%c'",recattr.attrtype);
 				j++;	
-				//telos kataskeuhs
+				//end of construction
 				
 				INF[k].offset=recattr.offset;
 				INF[k].type=recattr.attrtype;
@@ -565,27 +565,27 @@ int DM_select(int argc, char* argv[]){
 		}
 		
 	}
-	//desmeush xorou gia to projected record
+	//allocate memory for the projected record
 	//projectedrecord=malloc(recsize*sizeof(char));
 	
-	//////TELOS ELEGXOU ORISMATON
+	//////END OF ARGUMENT VALIDATION
 	
-	//anoigma tou relname
+	//open the relname file
 	if((rel1fd=HF_OpenFile(onomasxeshs))<0)
 		HF_PrintError("SELECT");
 		
-	//dhmiourgia prosorinou arxeiou eisagoghs ton probalomenon apotelesmaton
+	//create temporary file for inserting projected results
 
-	//periptosh opou den mas exei dothei to onoma kapoiou arxeiou gia na baloume
-	//ta apotelesmata ths select
+	//case where no output file name was given to store
+	//the results of the select
 	if(output_file_exists==1){
-		//dhmiourgia tou arxeiou
+		//create the file
 		if(UT_create(utcargc,utcargs)<0){
 			printf("Error while creating temporary file\n");
 			return -1;
 		}
 	
-		//anoigma tou arxeiou
+		//open the file
 		if((tempfd=HF_OpenFile(argv[1]))<0)
 			HF_PrintError("SELECT");
 
@@ -593,33 +593,33 @@ int DM_select(int argc, char* argv[]){
 	}
 
 					
-	//periptosh opou mas exei dothei to onoma enos arxeiou gia na baloume ta apotelesmata
+	//case where an output file name was given to store the results
 	else{
-		//dhmiourgia tou arxeiou
+		//create the file
 		if(UT_create(utcargc,utcargs)<0){
 			printf("Error while creating output file %s\n",argv[1]);
 			return -1;
 		}
 		
-		//anoigma tou arxeiou
+		//open the file
 		if((tempfd=HF_OpenFile(utcargs[1]))<0)
 			HF_PrintError("SELECT");
 
 	}
 	
 	
-	///////ENARKSH SELECT
+	///////BEGIN SELECT
 	
-	//PROTH PERIPTOSH : EXOUME <WHERE>
+	//FIRST CASE: WE HAVE <WHERE>
 	
-	//elegxoume thn thesh tou pinaka argv[] opou apothikeuete o telesths sygkrishs
-	//an o deikths se authn thn thesh einai diaforetikos tou NULL tote exoume WHERE
-	//diaforetika den exoume
+	//we check the position in argv[] where the comparison operator is stored
+	//if the pointer at that position is different from NULL then we have WHERE
+	//otherwise we do not
 	
 	if(strpbrk(argv[argc-2],telestes)!=NULL){
 	
-		//pame na doume an to pedio ths synthikis einai INDEXED
-		//SKANARISMA TOU ATTRCAT
+		//let's check if the condition field is INDEXED
+		//SCAN ATTRCAT
 		if((scanDescattr=HF_OpenFileScan(attrfd,sizeof(attrDesc),'c',MAXNAME,0,EQUAL,onomasxeshs))<0)
 			HF_PrintError("Problem while opening file scan");
 		
@@ -628,8 +628,8 @@ int DM_select(int argc, char* argv[]){
 		while(check!=HFE_EOF){
 			if(strcmp(recattr.attrname,argv[argc-3])==0){
 				break;
-				//bgenoume apo to while exontas kratisei sto recattr ta stoixeia tou 
-				//pediou pou mas endiaferei, ta stoixeia dld tou pediou sygkrishs
+				//we exit the while having kept in recattr the details of the 
+				//field we are interested in, i.e. the details of the comparison field
 			}
 			
 			check=HF_FindNextRec(scanDescattr,(char*)&recattr);
@@ -638,7 +638,7 @@ int DM_select(int argc, char* argv[]){
 		if(HF_CloseFileScan(scanDescattr)<0)
 			HF_PrintError("SELECT");
 
-		//PROTH PERIPTOSH proths perisptoshs : to pedio tou WHERE einai eurethriasmeno
+		//FIRST SUB-CASE of the first case: the WHERE field is indexed
 		if(recattr.indexed==TRUE){
 			if((indexfd=AM_OpenIndex(onomasxeshs,recattr.indexno))<0)
 				AM_PrintError("SELECT");
@@ -666,7 +666,7 @@ int DM_select(int argc, char* argv[]){
 				AM_PrintError("SELECT");
 		}
 	
-		//DEUTERH PERIPTOSH proths periptoshs : to pedio tou WHERE DEN einai eurethriasmeno
+		//SECOND SUB-CASE of the first case: the WHERE field is NOT indexed
 		else{
 			telestis=compare(argv[argc-2]);
 			if((HFScanDesc=HF_OpenFileScan(rel1fd,recrel.relwidth,recattr.attrtype,recattr.attrlength,recattr.offset,telestis,argv[argc-1]))<0)
@@ -690,7 +690,7 @@ int DM_select(int argc, char* argv[]){
 	}
 	
 	
-	//DEUTERH PERIPTOSH : DEN EXOUME <WHERE>
+	//SECOND CASE: WE DO NOT HAVE <WHERE>
 	else{
 		if((HFScanDesc=HF_OpenFileScan(rel1fd,recrel.relwidth,0,0,0,0,NULL))<0)
 			HF_PrintError("SELECT");
@@ -717,12 +717,12 @@ int DM_select(int argc, char* argv[]){
 	}
 	
 	
-	//an mas exei dothei onoma gia output file tote den ektyponoume tpt
-	//an den mas exei dothei onoma prepei na ektyposoume tis eggrafes pou
-	//exoume balei sto "temp"
+	//if an output file name was given then we do not print anything
+	//if no output file name was given we need to print the records that
+	//we have stored in "temp"
 	
 	if(output_file_exists==0){
-		//skanarisma tou "temp" xoris synthiki gia ektyposh olon ton eggrafon
+		//scan "temp" without condition to print all records
 		if((HFScanDesc=HF_OpenFileScan(tempfd,recsize,0,0,0,0,NULL))<0){
 			HF_PrintError("SELECT");
 			return -1;
@@ -762,20 +762,20 @@ int DM_select(int argc, char* argv[]){
 	}	                                                                            
 	
 	
-	//kleisimo tou relname
+	//close relname
 	if(HF_CloseFile(rel1fd)<0){
 		HF_PrintError("SELECT");
 		return -1;
 	}
 		
-	//kleisimo kai katastrofh ton prosorinon arxeion
+	//close and destroy the temporary files
 	if(output_file_exists==0){
-		//kleisimo
+		//close
 		if(HF_CloseFile(tempfd)<0){
 			HF_PrintError("SELECT");
 			return -1;
 		}
-		//katastrofh
+		//destroy
 		if(UT_destroy(2,utdargs)<0){
 			printf("Error while destroying temporary file in select\n");
 			return -1;
@@ -783,13 +783,13 @@ int DM_select(int argc, char* argv[]){
 	}
 	
 	else{
-		//kleisimo
+		//close
 		if(HF_CloseFile(tempfd)<0){
 			HF_PrintError("SELECT");
 			return -1;
 		}
 		
-		//an mas exei dothei output file... apla den to katastrefoume 
+		//if an output file was given... we simply do not destroy it 
 	}
 
 	
@@ -811,21 +811,21 @@ int DM_delete(int argc, char* argv[]){
 	
 	relDesc recrel;
 	attrDesc recattr;
-	int HFScanDesc;    //anagnristiko saroshs tou relname
+	int HFScanDesc;    //scan descriptor for relname
 	int check;
 	int recId;
 	int scanDescattr,scanDescrel,scanDescindex,scanDescindex2;
-	int indexfd,indexfdtemp;       //anagnoristikou arxeiou eurethriou (open file)
-	int rel1fd;         //anagnoristiko arxeiou relname (open file)
+	int indexfd,indexfdtemp;       //index file descriptor (open file)
+	int rel1fd;         //relname file descriptor (open file)
 	int found=0;
 	int telestis;
 	char *record;
 	
-	//sthn delete tha exoume 2 periptoseis : eite tha mas dinete mia synthiki kai tha prepei na diagrafoun 
-	//oi eggrafes pou thn ikanopoioun eite den tha mas dinete kamia synthiki kai tha prepei na diagrapsoume
-	//OLES tis eggrafes apo to RELNAME.
+	//in delete we have 2 cases: either a condition is given and we need to delete 
+	//the records that satisfy it, or no condition is given and we need to delete
+	//ALL records from the RELNAME.
 	
-	//SKANARISMA TOU RELCAT
+	//SCAN RELCAT
 	if((scanDescrel=HF_OpenFileScan(relfd,sizeof(relDesc),'c',MAXNAME,0,EQUAL,argv[1]))<0){
 		HF_PrintError("Problem while opening file scan");
 		return -1;
@@ -848,15 +848,15 @@ int DM_delete(int argc, char* argv[]){
 		return -1;
 	}
 		
-	//den xreiazete na yparxei elegxos gia ton telesth mias kai epidi exoume b+ dentro oloi
-	//oi telestes yposthrizonte kata thn sarosh. apla tha prepei na elegksoume an ta argv[2]
-	//kai argv[3] einai NULL gia na doume an exoume h oxi synthiki
+	//there is no need to check the operator since we have a B+ tree and all
+	//operators are supported during the scan. we just need to check if argv[2]
+	//and argv[3] are NULL to determine if we have a condition or not
 	
-	//ksekiname me thn periptosh opou den exoume synthiki diagrafhs
-	//to recrel einai diaforo tou NULL dld exei brethei eggrafh gia to relname sto RELCAT
-	//eno ta argv[2] kai argv[3] einai NULL mias kai den exei dothei synthiki diagrafhs
+	//we start with the case where there is no delete condition
+	//recrel is not NULL meaning a record for relname was found in RELCAT
+	//while argv[2] and argv[3] are NULL since no delete condition was given
 	
-	//desmeush xorou gai to record
+	//allocate memory for the record
 	record=malloc(recrel.relwidth*sizeof(char));
 
 	telestis=compare(argv[3]);
@@ -891,12 +891,12 @@ int DM_delete(int argc, char* argv[]){
 
 		
 		
-		//bgenontas apo to while exoun diagrafei OLES oi eggrafes apo to relname kai to mono pou mas menei
-		//einai na doume an kapoio apo ta pedia ton eggrafon htan eurethriasmeno opote prepei na diagrapsume 
-		//tis eggrafes kai apo auto to eurethrio
+		//exiting the while, ALL records have been deleted from relname and the only thing left
+		//is to check if any of the record fields were indexed, in which case we need to delete 
+		//the records from that index as well
 		
 		if(recrel.indexcnt=0){
-			//SKANARISMA TOU ATTRCAT
+			//SCAN ATTRCAT
 			if((scanDescattr=HF_OpenFileScan(attrfd,sizeof(attrDesc),'c',MAXNAME,0,EQUAL,argv[1]))<0){
 				HF_PrintError("Problem while opening file scan");
 				return -1;
@@ -922,7 +922,7 @@ int DM_delete(int argc, char* argv[]){
 						
 						while(recId!=AME_EOF){
 							if(recId>=0){
-								//xrhsimopoioume thn HF_GetThisRec gia na ftiaksoume to orisma RECORD
+								//we use HF_GetThisRec to build the RECORD argument
 								//the AM_DeleteEntry
 								if(HF_GetThisRec(indexfd,recId,record,recattr.attrlength)<0){
 									HF_PrintError("DELETE : Error while fetching specified record");
@@ -949,26 +949,26 @@ int DM_delete(int argc, char* argv[]){
 					}
 					
 				check=HF_FindNextRec(HFScanDesc,record);
-			} //kleisimo tou while(check!=HFFE_EOF)
+			} //end of while(check!=HFFE_EOF)
 			
 			if(HF_CloseFileScan(scanDescattr)<0){
 				HF_PrintError("DELETE : Error while closing scan");
 				return -1;
 			}
 
-		}//kleisimo tou if(recrel.indexcnt=0)
-	}//kleisimo tou if(recrel!=NULL && argv[2]==NULL && argv[3]==NULL)
+		}//end of if(recrel.indexcnt=0)
+	}//end of if(recrel!=NULL && argv[2]==NULL && argv[3]==NULL)
 	
 	
-	//DEUTERH PERIPTOSH : to relname exei brethei sto RELCAT mono pou edo prepei na diagrpasoume sygkekrimenes
-	//eggrafes analoga me thn dothisa synthiki
+	//SECOND CASE: relname was found in RELCAT but here we need to delete specific
+	//records depending on the given condition
 	
 	if(found==1 && argv[2]!=NULL && argv[3]!=NULL){
 		
-		//epidi den mas dinete o TYPOS tou pediou pano sto opoio ginete h sarosh tha prepei na
-		//anatreksoume sto ATTRCAT kai na broume to attrname tou relname kai to antistoixo TYPO tou
-		//auto to kanoume gt h HF_OpenFileScan pernei san orisma to attrtype.. to opoio dystyxos den mas dinete :(
-		//SKANARISMA TOU ATTRCAT
+		//since the TYPE of the field being scanned is not given to us, we need to
+		//look up the ATTRCAT and find the attrname of the relname and its corresponding TYPE
+		//we do this because HF_OpenFileScan takes attrtype as an argument.. which unfortunately is not given to us :(
+		//SCAN ATTRCAT
 		if((scanDescattr=HF_OpenFileScan(attrfd,sizeof(attrDesc),'c',MAXNAME,0,EQUAL,argv[1]))<0){
 			HF_PrintError("Problem while opening file scan");
 			return -1;
@@ -989,17 +989,17 @@ int DM_delete(int argc, char* argv[]){
 			return -1;
 		}
 		
-		//bgenontas apo to while exoume brei ton typo tou pediou pano sto opoio efarmozete
-		//o telesths sygkrishs
+		//exiting the while we have found the type of the field on which
+		//the comparison operator is applied
 		
-		//anoigma tou arxeiou sorou apo opou diagrafoume eggrafes
+		//open the heap file from which we delete records
 		if((rel1fd=HF_OpenFile(argv[1]))<0){
 			HF_PrintError("Error while trying to open file");
 			return -1;
 		}
 		
 		
-		//ekmetaleush tou eurethriou pou tyxon yparxei sto pedio sygkrishs
+		//exploit the index that may exist on the comparison field
 		if(recattr.indexed==TRUE){
 			if((indexfd=AM_OpenIndex(argv[1],recattr.indexno))<0){
 				AM_PrintError("DELETE : Error while opening scan");
@@ -1014,13 +1014,13 @@ int DM_delete(int argc, char* argv[]){
 			recId=AM_FindNextEntry(scanDescindex);
 			
 			while(recId!=AME_EOF){
-				//diagrafh tou record apo ton soro
+				//delete the record from the heap
 				if(HF_DeleteRec(rel1fd,recId,recrel.relwidth)<0){
 					HF_PrintError("Error while deleting record");
 					return -1;
 				}
 				
-				//oi 2 epomenes entoles pragmatopoioun thn diagrafh ths eggrafhs apo to eurethrio
+				//the next 2 commands perform the deletion of the record from the index
 				if(HF_GetThisRec(indexfd,recId,record,recattr.attrlength)<0){
 					HF_PrintError("DELETE : Error while fetching specified record");
 					return -1;
@@ -1031,12 +1031,12 @@ int DM_delete(int argc, char* argv[]){
 					return -1;
 				}
 				
-				//ektos omos apo thn diagrafh ths eggrafhs apo to eurethriou tou pediou ths synthikis
-				//prepei na diagrapsoume kai tis antistoixes eggrafes apo OLA ta eurethria ton eurethriasmenon
-				//pedion tou relname.... opote tha ksekinisoume ena skanarisma sto ATTRCAT gia na doume poia
-				//pedia ektos apo auto ths synthikis einai eurethrismena kai tha sbinoume thn antistoixh eggrafh
-				//opos kai stis proigoumenes entoles
-				//SKANARISMA TOU ATTRCAT
+				//besides deleting the record from the index of the condition field
+				//we also need to delete the corresponding records from ALL indexes of the indexed
+				//fields of relname.... so we start a scan on ATTRCAT to see which
+				//fields besides the condition field are indexed and delete the corresponding record
+				//as in the previous commands
+				//SCAN ATTRCAT
 				if((scanDescattr=HF_OpenFileScan(attrfd,sizeof(attrDesc),'c',MAXNAME,0,EQUAL,argv[1]))<0){
 					HF_PrintError("Problem while opening file scan");
 					return -1;
@@ -1074,11 +1074,11 @@ int DM_delete(int argc, char* argv[]){
 					check=HF_FindNextRec(scanDescattr,(char*)&recattr);
 
 				}
-				//bgenontas apo to while exoume diagrapsei OLES tis eggrafes me anagnoristiko eggrafhs recId
-				//apo OLA ta eurethria tou relname
+				//exiting the while we have deleted ALL records with record id recId
+				//from ALL indexes of relname
 
 				recId=AM_FindNextEntry(scanDescindex);
-			}//kleisimo tou while(recId!=AME_EOF)
+			}//end of while(recId!=AME_EOF)
 		
 			if(AM_CloseIndexScan(scanDescindex)<0){
 				AM_PrintError("DELETE : Error while closing scan");
@@ -1090,10 +1090,10 @@ int DM_delete(int argc, char* argv[]){
 				return -1;
 			}
 			
-		} //kleisimo tou if(recattr.indexed==TRUE)
+		} //end of if(recattr.indexed==TRUE)
 		
-		//enarksh skanarismatos me thn dosmenh synthiki
-		//den yparxei eurethrio pano sto dosmeno pedio ths synthikis
+		//begin scan with the given condition
+		//there is no index on the given condition field
 		else{
 			
 			if((HFScanDesc=HF_OpenFileScan(rel1fd,recrel.relwidth,recattr.attrtype,recattr.attrlength,recattr.offset,telestis,argv[4]))<0){
@@ -1105,15 +1105,15 @@ int DM_delete(int argc, char* argv[]){
 		
 			while(recId!=HFE_EOF){
 				if(recId>=0){
-					//diagrafh ths eggrafhs apo ton SORO
+					//delete the record from the HEAP
 					if(HF_DeleteRec(rel1fd,recId,recrel.relwidth)<0){
 						HF_PrintError("Error while deleting record");
 						return -1;
 					}
 					
-					//SKANARISMA TOU ATTRCAT
-					//tha psaksoume na broume pou yparxei to sygkekrimeno recId pou mas edose san return value h
-					// HF_FindNextEntry mesa se eurethria ALLON pedion
+					//SCAN ATTRCAT
+					//we will search to find where the specific recId returned by
+					// HF_FindNextEntry exists in indexes of OTHER fields
 					
 					if((scanDescattr=HF_OpenFileScan(attrfd,sizeof(attrDesc),'c',MAXNAME,0,EQUAL,argv[1]))<0){
 						HF_PrintError("Problem while opening file scan");
@@ -1152,14 +1152,14 @@ int DM_delete(int argc, char* argv[]){
 				}
 				recId=HF_FindNextRec(HFScanDesc,record);
 		
-			} //kleisimo tou while(recId!=HFE_EOF)
+			} //end of while(recId!=HFE_EOF)
 		
 						
 			if(HF_CloseFileScan(HFScanDesc)<0){
 				HF_PrintError("DELETE : Error while closing scan");
 				return -1;
 			}
-			//diagrapsame OLES tis eggrafes apo ton soro
+			//deleted ALL records from the heap
 
 		
 			if(HF_CloseFile(rel1fd)<0){
@@ -1181,11 +1181,11 @@ int DM_delete(int argc, char* argv[]){
 int DM_subtract(int argc,char* argv[]){
 	printArgs(argc,argv);
 
-	int scanDescattr1,scanDescattr2; //anagnoristika saroseon gia ATTRCAT
-	int scanDescrel1,scanDescrel2,HFScanDesc; //anagnoristika saroseon gia RELCAT
-	int HFScanDesc1,HFScanDesc2; //anagnoristika saroseon gia relname1 kai relname 2
+	int scanDescattr1,scanDescattr2; //scan descriptors for ATTRCAT
+	int scanDescrel1,scanDescrel2,HFScanDesc; //scan descriptors for RELCAT
+	int HFScanDesc1,HFScanDesc2; //scan descriptors for relname1 and relname2
 	int check,check1,check2;
-	int rel1fd,rel2fd; //anagnoristika arxeion gia ta relname1 kai relname2
+	int rel1fd,rel2fd; //file descriptors for relname1 and relname2
 	int indexfd;
 	int found=0;
 	int recId;
@@ -1198,14 +1198,14 @@ int DM_subtract(int argc,char* argv[]){
 
 	
 
-	//to relname1 DEN mporei na einai idio me to relname2
+	//relname1 CANNOT be the same as relname2
 	if(strcmp(argv[1],argv[2])==0){
 		printf("ERROR : EQUALITY OF RELNAMES");
 		return 1;
 	}
 
 
-	//SKANARISMA TOU RELCAT	GIA TO RELNAME 1
+	//SCAN RELCAT FOR RELNAME 1
 	if((scanDescrel1=HF_OpenFileScan(relfd,sizeof(relDesc),'c',MAXNAME,0,EQUAL,argv[1]))<0){
 			HF_PrintError("Problem while opening file scan");
 			return -1;
@@ -1220,7 +1220,7 @@ int DM_subtract(int argc,char* argv[]){
 	}
 
 
-	//SKANARISMA TOU RELCAT	GIA TO RELNAME 2
+	//SCAN RELCAT FOR RELNAME 2
 	if((scanDescrel2=HF_OpenFileScan(relfd,sizeof(relDesc),'c',MAXNAME,0,EQUAL,argv[2]))<0){
 			HF_PrintError("Problem while opening file scan");
 			return -1;
@@ -1244,19 +1244,19 @@ int DM_subtract(int argc,char* argv[]){
 		return -1;
 	}
 
-	//elegxos gia diaforetiko arithmo orismaton
+	//check for different number of fields
 	if(recrel1.attrcnt!=recrel2.attrcnt){
 		printf("ERROR IN ADD : DIFFERENT NUMBER OF FIELDS");
 		return 1;
 	}
 
-	//desmeush pinakon gia thn syggrish ton eggrafon apo ta 2 arxeia
+	//allocate arrays for comparing records from the 2 files
 	record1=malloc(recrel1.relwidth*sizeof(char));
 	record2=malloc(recrel1.relwidth*sizeof(char));
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	
 
-	//SKANARISMA TOU ATTRCAT
+	//SCAN ATTRCAT
 	if((scanDescattr1=HF_OpenFileScan(attrfd,sizeof(attrDesc),'c',MAXNAME,0,EQUAL,argv[1]))<0){
 		HF_PrintError("Problem while opening file scan");
 		return -1;
@@ -1271,20 +1271,20 @@ int DM_subtract(int argc,char* argv[]){
 	check2=HF_FindNextRec(scanDescattr2,(char*)&recattr2);
 	
 	while(check1!=HFE_EOF && check2!=HFE_EOF){
-		//efoson h sygkrish ton pou pedion pou kanoume einai parallhlh eksasfalizoume kai thn sosth SEIRA ton pedion
-		//elegxos gia to onoma tou pediou
+		//since the field comparison we perform is parallel, we also ensure the correct ORDER of fields
+		//check the field name
 		/*if(strcmp(recattr1.attrname,recattr2.attrname)){
 			printf("ERROR IN ADD : INCOMPATIBLE NAME OF FIELDS");
 			return 1;
 		}*/
 		
-		//elegxos gia to mhkos (LENGTH) ton pedion
+		//check the LENGTH of fields
 		if(recattr1.attrlength!=recattr2.attrlength){
 			printf("ERROR IN ADD : INCOMPATIBLE LENGTH OF FIELDS");
 			return 1;
 		}
 		
-		//elegxos gia ton TYPO ton pedion
+		//check the TYPE of fields
 		if(strcmp(&recattr1.attrtype,&recattr2.attrtype)){
 			printf("ERROR IN ADD : INCOMPATIBLE TYPE OF FIELDS");
 			return 1;
@@ -1322,7 +1322,7 @@ int DM_subtract(int argc,char* argv[]){
 
 
 	if(found==recrel1.attrcnt){
-		//anoigma ton relname1 kai relname2
+		//open relname1 and relname2
 		if((rel1fd=HF_OpenFile(argv[1]))<0){
 			HF_PrintError("Error while attempting to open file");
 			return -1;
@@ -1333,9 +1333,9 @@ int DM_subtract(int argc,char* argv[]){
 			return -1;
 		}
 
-		//anoigma skanarismatos xoris synthiki gia na paroume OLES tis eggrafes tou relname2
-		if((HFScanDesc2=HF_OpenFileScan(rel2fd,recrel1.relwidth,0,0,0,0,NULL))<0){    //gia mikos eggrafhs vazoume ena apo relwidth
-											      //eite tou relname1 eite tou relname2 afou einai isa
+		//open scan without condition to get ALL records of relname2
+		if((HFScanDesc2=HF_OpenFileScan(rel2fd,recrel1.relwidth,0,0,0,0,NULL))<0){    //for record length we use either relwidth
+											      //of relname1 or relname2 since they are equal
 			HF_PrintError("Problem while opening file scan");
 			return -1;
 		}
@@ -1343,10 +1343,10 @@ int DM_subtract(int argc,char* argv[]){
 		check2=HF_FindNextRec(HFScanDesc2,record2);
 
 		while(check2!=HFE_EOF){
-			//anoigma skanarismatos me synthiki gia na broume thn eggrafh record2 sto relname1 kai na thn diagrapsoume
+			//open scan with condition to find record2 in relname1 and delete it
 			if((HFScanDesc1=HF_OpenFileScan(rel1fd,recrel1.relwidth,0,0,0,0,NULL))<0){
-											      //gia mikos eggrafhs vazoume ena apo relwidth
-											      //eite tou relname1 eite tou relname2 afou einai isa
+											      //for record length we use either relwidth
+											      //of relname1 or relname2 since they are equal
 				HF_PrintError("Problem while opening file scan");
 				return -1;
 			}
@@ -1379,9 +1379,9 @@ int DM_subtract(int argc,char* argv[]){
 		printf("INVALID ARGUMENTS IN COMMAND LINE PROMPT...READ INSTRUCTIONS AND TRY AGAIN");
 
 		
-	//me authn thn substract diagrafoume eggrafes pou einai topothetimenes se soro
-	//kai den ekmetaleiomaste tyxon eurethria gia ta pedia tou enos h tou allou relname
-	//RPEPEI NA BROUME TROPO GIA NA TA EKMETALEUTOUME KAI NA GINETE PIO GRIGORA H DIAGRAFH
+	//with this subtract we delete records that are stored in the heap
+	//and we do not exploit potential indexes on the fields of either relname
+	//TODO: FIND A WAY TO EXPLOIT THEM FOR FASTER DELETION
 
 	return 0;
 }
@@ -1393,13 +1393,13 @@ int DM_insert(int argc,char* argv[]){
 	int temprelfd,indexfd;
 	int found=0;
 	int recId;
-	int offset=0; //boithitikh metablith gia thn dhmiourgia ths eggrafhs
+	int offset=0; //helper variable for building the record
 	int foundrelname=0;
-	int *soa; //pinakas opou kratame thn seira diadoxhs ton orismaton (sequence of arguments)
+	int *soa; //array where we keep the sequence of arguments (sequence of arguments)
 	int numberint;
 	float numberfloat;
-	char *buffer;  //buffer mesa sto opoio bazoume thn nea eggrafh
-	char value[256];  //buffer gia na pernoume thn eurethriasmenh timh tou pediou
+	char *buffer;  //buffer in which we place the new record
+	char value[256];  //buffer for getting the indexed value of the field
 	NOI *types;
 	attrDesc recattr;
 	relDesc recrel;
@@ -1409,12 +1409,12 @@ int DM_insert(int argc,char* argv[]){
 	for(i=0;i<argc;i++)
 		printf("argv[%d]=%s\n",i,argv[i]);
 
-	//kata thn eisagogh ths eggrafhs tha prepei na diasfalisoume pos ta pedia auths einai idia me 
-	//ta pedia tou RELNAME sto opoio tha eisaxthei...
+	//during record insertion we need to ensure that its fields are the same as 
+	//the fields of the RELNAME into which it will be inserted...
 
-	//SKANARISMA TOU RELCAT	
-	//tha psaksoume na broume an h proth metablhth pou dothike san orisma (dld to ARGV[1])
-	//yparxei ston pinaka RELCAT
+	//SCAN RELCAT
+	//we will search to find if the first variable given as argument (i.e. ARGV[1])
+	//exists in the RELCAT table
 	
 	if((scanDescrel=HF_OpenFileScan(relfd,sizeof(relDesc),'c',MAXNAME,0,EQUAL,argv[1]))<0)
 			HF_PrintError("Problem while opening file scan");
@@ -1433,26 +1433,26 @@ int DM_insert(int argc,char* argv[]){
 	if(HF_CloseFileScan(scanDescrel)<0)
 		HF_PrintError("Error while closing scan");
 
-	//SKANARISMA TOU ATTRCAT
+	//SCAN ATTRCAT
 	if((scanDescattr=HF_OpenFileScan(attrfd,sizeof(attrDesc),'c',MAXNAME,0,EQUAL,argv[1]))<0)
 		HF_PrintError("Problem while opening file scan");
 	
 	check=HF_FindNextRec(scanDescattr,(char*)&recattr);
 
-	//dsmeush xorou gia ton pinaka types
+	//allocate memory for the types array
 	types=malloc(recrel.attrcnt*sizeof(NOI));
 
-	//desmeush xorou gia ton buffer opou tha ftiaksoume thn eggrafh
+	//allocate memory for the buffer where we will build the record
 	buffer=malloc(recrel.relwidth*sizeof(char));
 	
-	//desmeush xorou gia ton pinaka sequence of arguments = soa
+	//allocate memory for the sequence of arguments array = soa
 	soa=malloc(recrel.attrcnt*sizeof(int));
 	j=0;
 	while(check!=HFE_EOF){
 
 		if(check>=0)
 			for(i=2;i<argc;i=i+2)
-				if(strcmp(recattr.attrname,argv[i])==0 && (recattr.attrlength>=sizeof(argv[1]))/*elegxos gia ton typo??*/){
+				if(strcmp(recattr.attrname,argv[i])==0 && (recattr.attrlength>=sizeof(argv[1]))/*check the type??*/){
 					found++;
 					types[j].type=recattr.attrtype;
 					types[j].length=recattr.attrlength;					
@@ -1466,10 +1466,10 @@ int DM_insert(int argc,char* argv[]){
 	if(HF_CloseFileScan(scanDescattr)<0)
 		HF_PrintError("Error while closing scan");	
 
-	if(foundrelname==1 && found==recrel.attrcnt){     //to RELNAME brethike sto RELCAT kai to found(pou deixnei to POSES idies meta
-							//blites me ta dosmena orismata brethikan sto ATTRCAT) einai iso me ton arithmo
-							//ton pedion tou RELNAME pou tha mpei to record
-		//kataskeuh ths eggrafhs
+	if(foundrelname==1 && found==recrel.attrcnt){     //RELNAME was found in RELCAT and found (which indicates HOW MANY identical
+							//variables with the given arguments were found in ATTRCAT) equals the number
+							//of fields of the RELNAME where the record will be inserted
+		//build the record
 		//j=3;
 		for(i=0;i<recrel.attrcnt;i++){
 			if(types[i].type=='i'){
@@ -1497,11 +1497,11 @@ int DM_insert(int argc,char* argv[]){
 		if(HF_CloseFile(temprelfd)<0)
 			HF_PrintError("Error while attempting to close file");
 
-		//sthn synexeia tha prepei na elegksoume an kapoio apo ta pedia ths neoeisaxthisas eggrafhs einai euretiriasmeno
-		//an einai tha prepei na broume to eurethrio,na to anoiksoume, na eisagoume thn eggrafh kai na to klisoume
+		//next we need to check if any of the newly inserted record's fields is indexed
+		//if so we need to find the index, open it, insert the record and close it
 		if(recrel.indexcnt=!0){
-			//anoigma skanarismatos gia to
-			//SKANARISMA TOU ATTRCAT
+			//open scan for
+			//SCAN ATTRCAT
 			if((scanDescattr=HF_OpenFileScan(attrfd,sizeof(attrDesc),'c',MAXNAME,0,EQUAL,argv[1]))<0)
 				HF_PrintError("Problem while opening file scan");
 	
@@ -1530,15 +1530,15 @@ int DM_insert(int argc,char* argv[]){
 							if(AM_CloseIndex(indexfd)<0)
 								AM_PrintError("Error while attempting to close index");
 					
-						} //kleisimo ths if(strcmp(recattr.attrname,argv[i]) && recattr.indexed==TRUE)
+						} //end of if(strcmp(recattr.attrname,argv[i]) && recattr.indexed==TRUE)
 					check=HF_FindNextRec(scanDescattr,(char*)&recattr);
-			} //kleisimo ths while(check!=HFE_EOF)
+			} //end of while(check!=HFE_EOF)
 
 			if(HF_CloseFileScan(scanDescrel)<0)
 				HF_PrintError("Error while closing scan");
 
-		} //kleisimo ths if(recrel.indexcnt=!0)
-	} //kleisimo ths if(recrel!=NULL && found==recrel.attrcnt)
+		} //end of if(recrel.indexcnt=!0)
+	} //end of if(recrel!=NULL && found==recrel.attrcnt)
 
 
 	
@@ -1549,15 +1549,15 @@ int DM_insert(int argc,char* argv[]){
 int DM_add(int argc,char* argv[]){
 	printArgs(argc,argv);
 
-	//h praksh INSERT mporei na ginete mono metaksy sxeseon pou einai apolyta idies os pros ton typo ton eggrafon
-	//pou periexoun(idios typos,seira kai mikos pedion)... ta pedia den einai aparetita na exoun to idio onoma
-	//opote ksekiname me auton ton elegxo
+	//the INSERT operation can only be performed between relations that are absolutely identical in terms of record type
+	//they contain (same type, order and length of fields)... the fields do not necessarily need to have the same name
+	//so we start with this check
 
-	int scanDescattr1,scanDescattr2; //anagnoristika saroseon gia ATTRCAT
-	int scanDescrel1,scanDescrel2,HFScanDesc; //anagnoristika saroseon gia RELCAT
-	int HFScanDesc1,HFScanDesc2; //anagnoristika saroseon gia relname1 kai relname 2
+	int scanDescattr1,scanDescattr2; //scan descriptors for ATTRCAT
+	int scanDescrel1,scanDescrel2,HFScanDesc; //scan descriptors for RELCAT
+	int HFScanDesc1,HFScanDesc2; //scan descriptors for relname1 and relname2
 	int check,check1,check2;
-	int rel1fd,rel2fd; //anagnoristika arxeion gia ta relname1 kai relname2
+	int rel1fd,rel2fd; //file descriptors for relname1 and relname2
 	int indexfd;
 	int found=0;
 	int recId;
@@ -1570,14 +1570,14 @@ int DM_add(int argc,char* argv[]){
 	NOI *mynoi;
 	int i;
 	
-	//to relname1 DEN mporei na einai idio me to relname2
+	//relname1 CANNOT be the same as relname2
 	if(strcmp(argv[1],argv[2])==0){
 		printf("ERROR : EQUALITY OF RELNAMES");
 		return 1;
 	}
 
 
-	//SKANARISMA TOU RELCAT	GIA TO RELNAME 1
+	//SCAN RELCAT FOR RELNAME 1
 	if((scanDescrel1=HF_OpenFileScan(relfd,sizeof(relDesc),'c',MAXNAME,0,EQUAL,argv[1]))<0)
 			HF_PrintError("Problem while opening file scan");
 
@@ -1589,12 +1589,12 @@ int DM_add(int argc,char* argv[]){
 		check=HF_FindNextRec(scanDescrel1,(char*)&recrel1);
 	}
 
-	//desmeush xorou pou tha krataei ton arithmo ton eurethrion tou relname1 gia na apofygoume deutera kai
-	//trita skanarismata idion pramgaton
+	//allocate memory to hold the index numbers of relname1 to avoid second and
+	//third scans of the same data
 
 	mynoi=malloc(recrel1.attrcnt*sizeof(NOI));
 	
-	//SKANARISMA TOU RELCAT	GIA TO RELNAME 2
+	//SCAN RELCAT FOR RELNAME 2
 	if((scanDescrel2=HF_OpenFileScan(relfd,sizeof(relDesc),'c',MAXNAME,0,EQUAL,argv[2]))<0)
 			HF_PrintError("Problem while opening file scan");
 
@@ -1612,19 +1612,19 @@ int DM_add(int argc,char* argv[]){
 	if(HF_CloseFileScan(scanDescrel2)<0)
 		HF_PrintError("Error while closing scan");
 
-	//elegxos gia diaforetiko arithmo orismaton
+	//check for different number of fields
 	if(recrel1.attrcnt!=recrel2.attrcnt){
 		printf("ERROR IN ADD : DIFFERENT NUMBER OF FIELDS");
 		return 1;
 	}
 
-	//desmeush xorou gia thn eggrafh
+	//allocate memory for the record
 	record=malloc(recrel1.relwidth*sizeof(char));
 	
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	
 
-	//SKANARISMA TOU ATTRCAT
+	//SCAN ATTRCAT
 	if((scanDescattr1=HF_OpenFileScan(attrfd,sizeof(attrDesc),'c',MAXNAME,0,EQUAL,argv[1]))<0)
 		HF_PrintError("Problem while opening file scan");
 	
@@ -1637,20 +1637,20 @@ int DM_add(int argc,char* argv[]){
 	
 	i=0;
 	while(check1!=HFE_EOF && check2!=HFE_EOF){
-		//efoson h sygkrish ton pou pedion pou kanoume einai parallhlh eksasfalizoume kai thn sosth SEIRA ton pedion
-		//elegxos gia to onoma tou pediou
+		//since the field comparison we perform is parallel, we also ensure the correct ORDER of fields
+		//check the field name
 		/*if(strcmp(recattr1.attrname,recattr2.attrname)){
 			printf("ERROR IN ADD : INCOMPATIBLE NAME OF FIELDS");
 			return 1;
 		}*/
 		
-		//elegxos gia to mhkos (LENGTH) ton pedion
+		//check the LENGTH of fields
 		if(recattr1.attrlength!=recattr2.attrlength){
 			printf("ERROR IN ADD : INCOMPATIBLE LENGTH OF FIELDS");
 			return 1;
 		}
 		
-		//elegxos gia ton TYPO ton pedion
+		//check the TYPE of fields
 		if(strcmp(&recattr1.attrtype,&recattr2.attrtype)){
 			printf("ERROR IN ADD : INCOMPATIBLE TYPE OF FIELDS");
 			return 1;
@@ -1682,32 +1682,32 @@ int DM_add(int argc,char* argv[]){
 	if(HF_CloseFileScan(scanDescattr2)<0)
 		HF_PrintError("Error while closing scan");
 
-	if(found==recrel1.attrcnt){         //perasame ton elegxo ton pedion , h syntaksh ths entolhs einai sosth
-					     //proxorame sthn eisagogh ton eggrafon tou relname1 sthn relname2
+	if(found==recrel1.attrcnt){         //we passed the field validation, the command syntax is correct
+					     //we proceed to insert records from relname1 into relname2
 		
 
-		//anoigma ton relname1 kai relname2
+		//open relname1 and relname2
 		if((rel1fd=HF_OpenFile(argv[1]))<0)
 			HF_PrintError("Error while attempting to open file");
 		
 		if((rel2fd=HF_OpenFile(argv[2]))<0)
 			HF_PrintError("Error while attempting to open file");
 		
-		//anoigma skanarismatos xoris synthiki gia na paroume OLES tis eggrafes tou relname2
-		if((HFScanDesc2=HF_OpenFileScan(rel2fd,recrel1.relwidth,0,0,0,0,NULL))<0)    //gia mikos eggrafhs vazoume ena apo relwidth
-											      //eite tou relname1 eite tou relname2 afou einai isa
+		//open scan without condition to get ALL records of relname2
+		if((HFScanDesc2=HF_OpenFileScan(rel2fd,recrel1.relwidth,0,0,0,0,NULL))<0)    //for record length we use either relwidth
+											      //of relname1 or relname2 since they are equal
 			HF_PrintError("Problem while opening file scan");
 
 		check=HF_FindNextRec(HFScanDesc2,record);
 		
 		while(check!=HFE_EOF){
 			if(check>=0){	
-				//eisagoume thn eggrafh tou relname2(=record) sto relname1(=rel1fd)
+				//insert the record from relname2 (=record) into relname1 (=rel1fd)
 				if((recId=HF_InsertRec(rel1fd,record,recrel1.relwidth))<0)
 					HF_PrintError("Problem while inserting one of MANY records");	
 
-				//psaxnoume na broume an kapoio apo ta pedia tou relname1 einai eurethriasmeno kai an einai
-				//tote eisagoume thn antistoixh eggrafh tou relname2 sto antisoixo eurethrio
+				//search to find if any of relname1's fields is indexed and if so
+				//insert the corresponding record from relname2 into the corresponding index
 			
 				for(i=0;i<recrel1.indexcnt;i++)
 					if(mynoi[i].number_of_index!=0){
@@ -1774,7 +1774,7 @@ int main(int argc,char* argv[]){
 	HF_Init();
 	AM_Init();	
 
-	//anoigma ton arxeion pou emperiexoun plirofories gia thn bash
+	//open the files that contain information about the database
 	if((relfd=HF_OpenFile("RELCAT"))<0){
 		HF_PrintError("Problem with RELCAT's HF_OpenFile");
 		exit(2);
@@ -1797,7 +1797,7 @@ int main(int argc,char* argv[]){
 		
 	while(yyparse() == RESTART);
 
-	/////////////////////////KLEISIMO TON ARXEION//////////////////////////////////////////////////////////////////////////////
+	/////////////////////////CLOSE FILES//////////////////////////////////////////////////////////////////////////////
 	if(HF_CloseFile(relfd)<0){
 		HF_PrintError("Problem while closing RELCAT");
 		exit(8);

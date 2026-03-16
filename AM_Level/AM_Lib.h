@@ -1,19 +1,19 @@
 #ifndef __AM_H__
 #define __AM_H__
 
-//kodikoi lathon
+//error codes
 #define AME_OK	0	//OK
-#define AME_INDEXNO	-32	//To indexno pou dinetai iparxei idi gia kapoio euretirio
-#define AME_FULLINDEXARRAY	-33	//O pinakas euretirion exei gemisei
-//#define AME_FULLBLOCK	-34	//To block exei gemisei eggrafes
-#define AME_ATTRTYPEFAULT	-34	//Dothike lathos typos pediou
-#define AME_ENDOFINDEX	-35	//Den mporei na diplasiastei allo o pinakas ara telos
-#define AME_RECNOTFOUND	-36	//De brethike i eggrafi pou zitithike
-#define AME_FULLSCANARRAY	-37//O pinakas anoixton saroseon einai gematos
-#define AME_WRONG_OP	-38//Lathos arithmos op
-#define AME_WRONGSCANDESC  -39//lathos kwdikos gia ton pinaka anoiktwn sarwsewn
-#define AME_INDEXSCANALREADYCLOSED -40 //to index scan exei idi termatisei
-#define AME_EOF	-41//ftasame se end of file
+#define AME_INDEXNO	-32	//The given indexNo already exists for some index
+#define AME_FULLINDEXARRAY	-33	//The index array is full
+//#define AME_FULLBLOCK	-34	//The block is full of records
+#define AME_ATTRTYPEFAULT	-34	//Wrong attribute type given
+#define AME_ENDOFINDEX	-35	//The array cannot be doubled any further, end reached
+#define AME_RECNOTFOUND	-36	//The requested record was not found
+#define AME_FULLSCANARRAY	-37//The open scans array is full
+#define AME_WRONG_OP	-38//Wrong op number
+#define AME_WRONGSCANDESC  -39//Wrong code for the open scans array
+#define AME_INDEXSCANALREADYCLOSED -40 //The index scan has already terminated
+#define AME_EOF	-41//Reached end of file
 
 
 #define MAXINDEXES 25
@@ -30,28 +30,28 @@
 #define NOT_EQUAL 6
 
 
-typedef struct amindex{//domi me plirofories gia kathe euretirio
+typedef struct amindex{//struct with information for each index
 
-	int fileDesc;	
-	char *filename;//to onoma tou arxeiou pou euretiriazoume
-	int indexNo;//auxon arithmos euretiriou
-	char attrType;//tipos pediou
-	int attrLength;//megethos pediou se bytes
+	int fileDesc;
+	char *filename;//the name of the file we are indexing
+	int indexNo;//sequential index number
+	char attrType;//attribute type
+	int attrLength;//attribute size in bytes
 	int isfree;
-	int recsize;//megethos eggrafis
-	int maxrecs;//megistos arithmos eggrafon se kathe kado
+	int recsize;//record size
+	int maxrecs;//maximum number of records per bucket
 
 }amindex;
 
-typedef struct openscans{//domi gia tis anoixtes saroseis
+typedef struct openscans{//struct for open scans
 
 	int fileDesc;
 	char attrType;
 	int attrLength;
-	int op;//telestis sigkrisis
+	int op;//comparison operator
 	char *value;
-	int bucket;//o kados ston opoio exei stamatisei i sarosi
-	int recNo;//i teleutaia eggrafi pou sarothike
+	int bucket;//the bucket where the scan has stopped
+	int recNo;//the last record that was scanned
 	int isfree;
 	
 }openscans;
@@ -61,7 +61,7 @@ typedef unsigned int (*hash_function)(char*, unsigned int len);
 unsigned int JSHash  (char* str, unsigned int len);
 
 
-//global metablites
+//global variables
 
 int AM_errno;
 amindex indexes[MAXINDEXES];

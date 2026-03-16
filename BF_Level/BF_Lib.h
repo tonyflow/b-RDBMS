@@ -3,33 +3,33 @@
 #define __BF_H__
 
 #define BFE_OK 0            /* OK */
-#define BFE_NOMEM -1        /* elleipsi mnimis */
-#define BFE_NOBUF           -2      /* ellipsi xwrou endiamesisi mnimis */
-#define BFE_BLOCKFIXED      -3      /* block idi "karfwmeno" sti mnimi */
-#define BFE_BLOCKNOTINBUF           -4      /* block gia "ksekarfwma" den einai sti mnimi */
-#define BFE_BLOCKINBUF      -5      /* block idi sti mnimi */
-#define BFE_OS      -6      /* geniko sfalma Leitourgikou Sustimatos */
-#define BFE_INCOMPLETEREAD          -7      /* atelis anagnwsi block */
-#define BFE_INCOMPLETEWRITE         -8      /* ateles grapsimo se block */
-#define BFE_INCOMPLETEHDRREAD       -9      /* atelis anagnwsi block-kefalidas */
-#define BFE_INCOMPLETEHDRWRITE    -10       /* ateles grapsimo se block-kefalida */
-#define BFE_INVALIDBLOCK          -11       /* mi egkiros anagnwristikos arithmos block */
-#define BFE_FILEOPEN      -12       /* arxeio idi anoixto */
-#define BFE_FTABFULL      -13       /* lista anoixtwn arxeiwn pliris */
-#define BFE_FD    -14       /* mi egkuros anagnwristikos arithmos arxeiou */
-#define BFE_EOF           -15       /* telos arxeiou */
-#define BFE_BLOCKFREE     -16       /* block idi diathesimo */
-#define BFE_BLOCKUNFIXED          -17       /* block idi "ksekarfwmeno" */
-#define BFE_EXISTINGFILE        -18     /* to arxeio idi uparxei */
-#define BFE_OPENFILE    -19     /* problima me anoigma arxeiou */
-#define BFE_REMOVEFILE -20   /* problima me diagrafh arxeiou */
-#define BFE_DESTROYERR -21  /* kodikos lathous stin destroyfile */
-#define BFE_CLOSEFILE -22  /* problima me fclose */
-#define BFE_PINNEDCLOSE -23  /* apopeira kleisimatos arxeiou eno exei pinned block sti mnimi */
-#define BFE_NONVALIDBLOCK -24  /* de brethike egkiro block */
-#define BFE_DIRTYFAULT -25  /* an to dirty den einai oute 0 oute 1 */
-#define BFE_NOFREEBLOCK -26 /*de brethike eleuthero block(ola einai egkira)*/
-#define BFE_ALREADY_DISPOSED -27 /*to block einai idi disposed*/
+#define BFE_NOMEM -1        /* lack of memory */
+#define BFE_NOBUF           -2      /* lack of buffer memory space */
+#define BFE_BLOCKFIXED      -3      /* block already "pinned" in memory */
+#define BFE_BLOCKNOTINBUF           -4      /* block to be "unpinned" is not in memory */
+#define BFE_BLOCKINBUF      -5      /* block already in memory */
+#define BFE_OS      -6      /* general Operating System error */
+#define BFE_INCOMPLETEREAD          -7      /* incomplete block read */
+#define BFE_INCOMPLETEWRITE         -8      /* incomplete block write */
+#define BFE_INCOMPLETEHDRREAD       -9      /* incomplete header block read */
+#define BFE_INCOMPLETEHDRWRITE    -10       /* incomplete header block write */
+#define BFE_INVALIDBLOCK          -11       /* invalid block identifier number */
+#define BFE_FILEOPEN      -12       /* file already open */
+#define BFE_FTABFULL      -13       /* open files list is full */
+#define BFE_FD    -14       /* invalid file descriptor number */
+#define BFE_EOF           -15       /* end of file */
+#define BFE_BLOCKFREE     -16       /* block already available */
+#define BFE_BLOCKUNFIXED          -17       /* block already "unpinned" */
+#define BFE_EXISTINGFILE        -18     /* file already exists */
+#define BFE_OPENFILE    -19     /* problem opening file */
+#define BFE_REMOVEFILE -20   /* problem deleting file */
+#define BFE_DESTROYERR -21  /* error code in destroyfile */
+#define BFE_CLOSEFILE -22  /* problem with fclose */
+#define BFE_PINNEDCLOSE -23  /* attempt to close file while it has pinned blocks in memory */
+#define BFE_NONVALIDBLOCK -24  /* no valid block found */
+#define BFE_DIRTYFAULT -25  /* dirty flag is neither 0 nor 1 */
+#define BFE_NOFREEBLOCK -26 /*no free block found (all are valid)*/
+#define BFE_ALREADY_DISPOSED -27 /*the block is already disposed*/
 
 
 #define MAXOPENFILES 25
@@ -46,36 +46,36 @@ typedef struct openfile{
 
         char *filename;
         FILE *fp;
-        int isfree;//logiki metabliti gia to an i thesi auti tou pinaka einai eleutheri
-        int hd_index;//o arithmos tis thesis tou pinaka ton headers pou periexei to header tou arxeiou autou
+        int isfree;//boolean variable indicating whether this array position is free
+        int hd_index;//the index in the headers array that contains this file's header
 
 }openfile;
 
 typedef struct meminfo{
-        int blockNum;//o arithmos tis thesis tou block sto arxeio
+        int blockNum;//the position number of the block in the file
         long int lru_counter;
-        int pinned_counter;//apo posous diaforetikous filedescs exei ginei to block pinned sti mnimi
-        int dirty; // 0 an den exei allaksei, 1 an exei
-        int isfree;//an einai keni i thesi
-        char *filename; // to onoma tou arxeiou tou opoiou to block einai sti mnimi
-        int *bytemap;   //enas pinakas 25 theseon,opou kathe thesi einai 0 i 1 analoga me to an i antistoixi klisi
-                                        //ston pinaka anoixton arxeion exei kanei pin to block i oxi
+        int pinned_counter;//how many different file descriptors have pinned this block in memory
+        int dirty; // 0 if not modified, 1 if modified
+        int isfree;//whether this position is empty
+        char *filename; // the name of the file whose block is in memory
+        int *bytemap;   //an array of 25 positions, where each position is 0 or 1 depending on whether the corresponding
+                                        //entry in the open files array has pinned the block or not
 }meminfo;
 
 typedef struct header{
         char *headerblock;
-        int counter;//posoi xrisimopoioun auto to header apo ton pinaka anoixton arxeion
+        int counter;//how many entries in the open files array are using this header
 
 }header;
 
-//global metablites
-openfile openfiles[MAXOPENFILES];//pinakas anoixton arxeion
-meminfo memory[BF_BUFFER_SIZE];//pinakas me tis plirofories kathe block pou brisketai stin endiamesi mnimi
+//global variables
+openfile openfiles[MAXOPENFILES];//open files array
+meminfo memory[BF_BUFFER_SIZE];//array with information about each block in the buffer memory
 int BF_errno;
-char *midmem;//endiamesi mnimi
-header headers[MAXOPENFILES];//pinakas 25 theseon pou tha periexei ta headers se antistoixia me ton pinaka ton anoixton arxeion
-long int lru;//kathe fora pou ena block tha xreiazetai stin endiamesi mnimi,tha auxanoume tin metabliti lru kata 1 kai tha tin apothikeuoume stin
-	//antistoixi thesi ston pinaka meminfo
+char *midmem;//buffer memory
+header headers[MAXOPENFILES];//array of 25 positions that will hold headers corresponding to the open files array
+long int lru;//each time a block is needed in buffer memory, we increment the lru variable by 1 and store it in the
+	//corresponding position in the meminfo array
 
 
 void BF_Init();

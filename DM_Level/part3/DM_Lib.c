@@ -3,9 +3,9 @@
 #include "DM_Lib.h"
 #include <math.h>
 
-//Synarthsh pou xrhsimopoieitai an ena gnwrisma den einai arithmitikou typou alla symboloseira
-//Pairnoume tous 3 prwtous xarakthres kai briskoume thn "arithmitikh" tous timh opws ypodeiknuetai
-//apo tis dieukriniseis me bash 256 
+//Function used when an attribute is not a numeric type but a string.
+//We take the first 3 characters and compute their "arithmetic" value as indicated
+//by the specifications using base 256.
 int calc(char *s){
     int mhkos=0,i,j=0,result,k=2; 
     
@@ -19,9 +19,9 @@ int calc(char *s){
     }
     return result;
 }
-//Sunarthsh pou kanei tis sugkriseis metaksu duo timwn analoga me to eidos tous(int,float,char).
-//Xrhsimopoieitai giati oi times dinontai san orismata stis sunarthseis mesw enos deikth se char.
-//To flag xrhsimopoieitai sthn periptwsi pou se 'c' prepei na xrhsimopoihthei i calc.
+//Function that performs comparisons between two values depending on their type (int, float, char).
+//Used because values are passed as arguments to functions via a pointer to char.
+//The flag is used in the case where for 'c' the calc function should be used.
 int dm_mymemcmp(void *value1,void *value2,char attrType,int flag){
         switch(attrType){
                          case 'i':
@@ -61,7 +61,7 @@ int dm_mymemcmp(void *value1,void *value2,char attrType,int flag){
                               }
         }
 }
-//Synarthsh pou lambanei ton operand kai epistrefei ena arithmo 1-6 san anaparastash autou
+//Function that takes the operand and returns a number 1-6 as its representation
 int operand(char *s){
     if(strcmp(s,"=")==0){
         return 1;
@@ -83,8 +83,8 @@ int operand(char *s){
     }
     return -1;
 }
-//Synarthsh epilektikothtas pou ypologizei to sxetiko megethos ths apanthshs se mia eperwthsh epiloghs.
-//Dhladh to plithos twn eggrafwn kai metaballetai analoga ton telesth.
+//Selectivity function that computes the relative size of the answer to a selection query.
+//That is, the number of records, which varies depending on the operator.
 float selectivity(attrDesc aD,int op,void *val){ 
     switch(op){
                case 1:
@@ -120,42 +120,42 @@ int DM_insert(int argc,char* argv[]){
     relDesc rD;
     attrDesc aD;
     
-    //Elegxos gia ortho argc 
+    //Check for correct argc
     if(argc<4 || argc%2!=0){
        printf("Invalid argc\n");
-       return -1;//Lathos argc          
+       return -1;//Invalid argc          
     }    
-    //Elegxos gia yparksh sxeshs
+    //Check if the relation exists
     if((scanDesc=HF_OpenFileScan(relfileDesc,sizeof(relDesc),'c',MAXNAME,0,1,argv[1]))<0){
        HF_PrintError("");
        return -1;                                                                                
     }
     if((recId=HF_FindNextRec(scanDesc,(char *)&rD))<0){
        HF_PrintError("Invalid relation to insert : ");
-       return -1;//H sxesh den uparxei                                           
+       return -1;//The relation does not exist                                           
     }
     if(HF_CloseFileScan(scanDesc)!=HFE_OK){
        HF_PrintError("");
-       return -1;//Lathos sto kleisimo ths sarwshs                                            
+       return -1;//Error closing the scan                                            
     }
-    //Desmeush mnhmhs
+    //Memory allocation
     if((buffer=malloc(rD.relwidth))==NULL){
        return -1;
     }
-    //Kanw refresh
-    //Diagrafw thn eggrafh
+    //Refresh
+    //Delete the record
     if(HF_DeleteRec(relfileDesc,recId,sizeof(relDesc))!=HFE_OK){
        HF_PrintError("");
-       return -1;//Lathos sth diagrafh ths eggrafhs
+       return -1;//Error deleting the record
     }
-    //Kanw tis aparaithtes enhmerwseis
-    (rD.reccnt)+=1;      //auksanw ton # twn eggrafwn
-    //Eisagw ta nea dedomena sta arxeia
+    //Perform the necessary updates
+    (rD.reccnt)+=1;      //increment the record count
+    //Insert the new data into the files
     if(HF_InsertRec(relfileDesc,(char *)&rD,sizeof(relDesc))<0){
       HF_PrintError(""); 
       return -1;
     }
-    //Elegxos gia thn orthothta twn pediwn
+    //Check the correctness of the fields
     for(i=2;i<argc;i+=2){
         sprintf(name,"%s.%s",argv[1],argv[i]);
         if((scanDesc=HF_OpenFileScan(attrfileDesc,sizeof(attrDesc),'c',MAXNAME,MAXNAME,1,name))<0){
@@ -164,9 +164,9 @@ int DM_insert(int argc,char* argv[]){
         }
         if(HF_FindNextRec(scanDesc,(char *)&aD)<0){
            HF_PrintError("Invalid relation.attribute to insert : ");
-           return -1;//To pedio den uparxei                                            
+           return -1;//The field does not exist                                            
         }
-        //Analoga me ton typo ths rec thn eisagoume se ena buffer  
+        //Depending on the record type, insert it into a buffer
         if(aD.attrtype=='c'){
            memcpy(buffer+(aD.offset),argv[i+1],aD.attrlength);
         }
@@ -180,98 +180,98 @@ int DM_insert(int argc,char* argv[]){
         }
         if(HF_CloseFileScan(scanDesc)!=HFE_OK){
            HF_PrintError("");
-           return -1;//Lathos sto kleisimo ths sarwshs                                            
+           return -1;//Error closing the scan                                            
         }        
-    }//Anoigma tis sxeshs
+    }//Open the relation
     if((fileD=HF_OpenFile(argv[1]))<0){
        HF_PrintError(""); 
-       return -1;//Lathos sto anoigma tou arxeiou
-    }//Eisagwgh ths eggrafhs me eisagwgh tou buffer
+       return -1;//Error opening the file
+    }//Insert the record by inserting the buffer
     if((RecId=HF_InsertRec(fileD,buffer,rD.relwidth))<0){
        HF_PrintError(""); 
-       return -1;//Lathos sthn insert ths eggrafhs
+       return -1;//Error inserting the record
     }
     if(HF_CloseFile(fileD)!=HFE_OK){
        HF_PrintError(""); 
-       return -1;//Lathos sto kleisimo
+       return -1;//Error closing
     }
     for(i=2;i<argc;i+=2){
         flagmin=0;
         flagmax=0;
         flagindex=0;
         sprintf(name,"%s.%s",argv[1],argv[i]);
-        //Elegxos an yparxei h sxesh.pedio
+        //Check if the relation.field exists
         if((scanDesc=HF_OpenFileScan(attrfileDesc,sizeof(attrDesc),'c',MAXNAME,MAXNAME,1,name))<0){
            HF_PrintError("");
-           return -1;//Lathos sto anoigma ths sarwshs                                                                                
+           return -1;//Error opening the scan                                                                                
         }
         if((recId=HF_FindNextRec(scanDesc,(char *)&aD))<0){
            HF_PrintError("Invalid relation.attribute to insert : ");
-           return -1;//To pedio den uparxei                                            
+           return -1;//The field does not exist                                            
         }
         if(HF_CloseFileScan(scanDesc)!=HFE_OK){
            HF_PrintError("");
-           return -1;//Lathos sto kleisimo ths sarwshs                                            
+           return -1;//Error closing the scan                                            
         }
-        //Elegxos gia min kai max
-        //Enhmerwnw ta min kai max me thn prwth eggrafh pou tha eisagw
+        //Check for min and max
+        //Update min and max with the first record to be inserted
         if(aD.valuecnt==0){
            flagmin=1;
            flagmax=1;
         }
-        //sygkrish eggrafhs me min,an einai mikrotero prepei na enhmerwthei to min
+        //compare record with min, if it is smaller then min must be updated
         else if(dm_mymemcmp(buffer+(aD.offset),aD.min,aD.attrtype,1)==-1){
            flagmin=1;
         }
-        //sygkrish eggrafhs me max,an einai megalytero prepei na enhmerwthei to max
+        //compare record with max, if it is larger then max must be updated
         else if(dm_mymemcmp(buffer+(aD.offset),aD.max,aD.attrtype,1)==1){
            flagmax=1;
         }
-        //An to pedio exei eurethrio
+        //If the field has an index
         if((aD.indexed)==1){
            sprintf(name1,"%s.%d",argv[1],aD.indexno);
-           //Anoigw to eurethriasmeno arxeio 
+           //Open the indexed file
            if((fd2=BF_OpenFile(name1))<0){
               BF_PrintError(""); 
-              return -1;//Lathos sto anoigma tou arxeiou
+              return -1;//Error opening the file
            }
-           //Elegxw an yparxei h timh
+           //Check if the value exists
            if((sd=AM_OpenIndexScan(fd2,aD.attrtype,aD.attrlength,1,buffer+(aD.offset)))<0){
               AM_PrintError(""); 
-              return -1;//Lathos sto anoigma ths sarwshs
+              return -1;//Error opening the scan
            }
            if(AM_FindNextEntry(sd)>=0){
                  flagindex=1;
            }
-           //Eisagwgh ths eggrafhs sto index
+           //Insert the record into the index
            if((AM_InsertEntry(fd2,aD.attrtype,aD.attrlength,buffer+(aD.offset),RecId))!=AME_OK){
                AM_PrintError("");
-               return -1;//Lathos sthn eisagwgh ths eggrafhs sto eurethrio
+               return -1;//Error inserting the record into the index
            }
            if(AM_CloseIndexScan(sd)!=AME_OK){
               AM_PrintError("");   
-              return -1;//Lathos sto kleisimo ths sarwshs                                            
+              return -1;//Error closing the scan                                            
            }
            if(BF_CloseFile(fd2)!=BFE_OK){
               BF_PrintError("");
-              return -1;//Lathos sto kleisimo tou arxeiou
+              return -1;//Error closing the file
            }
         }
-        //An den yparxei idia timh h einai mikroterh tou min h einai megaliterh tou max
+        //If there is no identical value or it is smaller than min or larger than max
         if( flagindex==0 || flagmin==1 || flagmax==1 ){
             if(HF_DeleteRec(attrfileDesc,recId,sizeof(attrDesc))!=HFE_OK){
                HF_PrintError("");
-               return -1;//Lathos sth diagrafh ths eggrafhs
+               return -1;//Error deleting the record
             }
-            //Kanw tis aparaithtes enhmerwseis
-            if(flagindex==0){           //An einai indexed to pedio prepei na auksisw to valuecnt
+            //Perform the necessary updates
+            if(flagindex==0){           //If the field is indexed, increment valuecnt
                (aD.valuecnt)+=1;
             }
             if(flagmin==1){             //Prepei na enhmerwsw to min
                if(strcmp(&(aD.attrtype),"i")==0 || strcmp(&(aD.attrtype),"f")==0){            
                   memcpy(aD.min,buffer+(aD.offset),aD.attrlength);
                }
-               //xrhsh ths calc an exoume symboloseira
+               //use calc if we have a string
                else{
                   timh=calc(argv[i+1]);  
                   memcpy(aD.min,&timh,sizeof(int));
@@ -281,20 +281,20 @@ int DM_insert(int argc,char* argv[]){
                if(strcmp(&(aD.attrtype),"i")==0 || strcmp(&(aD.attrtype),"f")==0){            
                   memcpy(aD.max,buffer+(aD.offset),aD.attrlength);
                }
-               //xrhsh ths calc an exoume symboloseira
+               //use calc if we have a string
                else{
                   timh=calc(argv[i+1]);
                   memcpy(aD.max,&timh,sizeof(int));
                }
             }            
-            //Eisagw ta nea dedomena twn pediwn ston pinaka twn pediwn
+            //Insert the new field data into the fields table
             if(HF_InsertRec(attrfileDesc,(char *)&aD,sizeof(attrDesc))<0){
                HF_PrintError("");
                return -1;
             }
         }
     }
-    //Apodesmeush mnhmhs
+    //Free memory
     free(buffer);
     return 0;
 }
@@ -305,156 +305,156 @@ int DM_delete(int argc,char* argv[]){
     relDesc rD;
     attrDesc aD;
     
-    //Elegxos gia ortho argc
+    //Check for correct argc
     if(argc!=2 && argc!=5){
        printf("Invalid argc\n");
-       return -1;//Lathos arithmos orismatwn           
+       return -1;//Invalid number of arguments           
     }
-    //Elegxos gia uparksh sxeshs 
+    //Check if the relation exists
     if((scanDesc1=HF_OpenFileScan(relfileDesc,sizeof(relDesc),'c',MAXNAME,0,1,argv[1]))<0){
        HF_PrintError("");
        return -1;                                                                                
     }
     if((recId1=HF_FindNextRec(scanDesc1,(char *)&rD))<0){
        HF_PrintError("Invalid relation to delete : ");
-       return -1;//H sxesh den uparxei                                           
+       return -1;//The relation does not exist                                           
     }
     if(HF_CloseFileScan(scanDesc1)!=HFE_OK){
       HF_PrintError("");
-      return -1;//Lathos sto kleisimo ths sarwshs                                            
+      return -1;//Error closing the scan                                            
     }
-    //Desmeush mnhmhs
+    //Memory allocation
     if((s=malloc(rD.relwidth))==NULL){
        return -1;
     }
-    //Kanw refresh
-    //Diagrafh ths eggrafhs
+    //Refresh
+    //Delete the record
     if(HF_DeleteRec(relfileDesc,recId1,sizeof(relDesc))!=HFE_OK){
        HF_PrintError("");
-       return -1;//Lathos sth diagrafh ths eggrafh
+       return -1;//Error deleting the record
     }
-    //Den exw where -> aplh periptwsh
+    //No where clause -> simple case
     if(argc==2){
-        //Anoigw to arxeio me onoma onoma_sxeshs
+        //Open the file with the relation name
         if((fileDesc=HF_OpenFile(argv[1]))<0){
            HF_PrintError("");
-           return -1;//Lathos sto anoigma ths sxeshs
+           return -1;//Error opening the relation
         }
         while(1){
-          //Anoigw mia sarwsh me NULL
+          //Open a scan with NULL
           if((scanDesc3=HF_OpenFileScan(fileDesc,rD.relwidth,aD.attrtype,aD.attrlength,aD.offset,1,NULL))<0){
               HF_PrintError("");
-              return -1;//Lathos sto anoigma ths sarwshs                                                                                
+              return -1;//Error opening the scan                                                                                
           }                        
           if((recId3=HF_FindNextRec(scanDesc3,s))<0){
              if(HF_CloseFileScan(scanDesc3)!=HFE_OK){
                 HF_PrintError("");
-                return -1;//Lathos sto kleisimo ths sarwshs                                            
+                return -1;//Error closing the scan                                            
              }
              break;//an teleiwsoun oi eggrafes pou epistrefei i FindNextRec
           }
           if(HF_CloseFileScan(scanDesc3)!=HFE_OK){
              HF_PrintError("");
-             return -1;//Lathos sto kleisimo ths sarwshs                                            
+             return -1;//Error closing the scan                                            
           }          
           if(HF_DeleteRec(fileDesc,recId3,rD.relwidth)!=HFE_OK){
              HF_PrintError("");
-             return -1;//Lathos sth diagrafh ths eggrafhs
+             return -1;//Error deleting the record
           }
-          //Gia ola ta pedia ths sxeshs                                        
+          //For all fields of the relation                                        
           for(i=0;i<(rD.attrcnt);i++){
              if((scanDesc2=HF_OpenFileScan(attrfileDesc,sizeof(attrDesc),'c',MAXNAME,0,1,argv[1]))<0){
                 HF_PrintError("");
-                return -1;//Lathos sto anoigma ths sarwshs                                                                                
+                return -1;//Error opening the scan                                                                                
              }
-             //Epeidh to HF den yposthrizei sarwsh kai tautoxronh diagrafh xrhsimopoioume to i san
-             //indicator se poia eggrafh eixame meinei
+             //Since HF does not support scan and simultaneous deletion, we use i as an
+             //indicator of which record we had reached
              k=0;
              while(k<=i){                             
                 if((recId2=HF_FindNextRec(scanDesc2,(char *)&aD))<0){
                    HF_PrintError("");
-                   return -1;//To pedio den uparxei                                            
+                   return -1;//The field does not exist                                            
                 }
 		        k++;
              }
              if(HF_CloseFileScan(scanDesc2)!=HFE_OK){
                 HF_PrintError("");
-                return -1;//Lathos sto kleisimo ths sarwshs                                            
+                return -1;//Error closing the scan                                            
              }
-             //An den exei eurethrio            
+             //If the field has no index            
              if((aD.indexed)==0){
                 (aD.valuecnt)--;
                 if(HF_DeleteRec(attrfileDesc,recId2,sizeof(attrDesc))!=HFE_OK){
                    HF_PrintError("");
-                   return -1;//Lathos sth diagrafh ths eggrafhs
+                   return -1;//Error deleting the record
                 }
                 if(HF_InsertRec(attrfileDesc,(char *)&aD,sizeof(attrDesc))<0){
                    HF_PrintError("");
                    return -1;
                 }
              }
-             //An exei eurethrio                         
+             //If the field has an index                         
              if((aD.indexed)==1){
                 sprintf(name1,"%s.%d",argv[1],aD.indexno);
                 if((fileDesc1=BF_OpenFile(name1))<0){
                    BF_PrintError("");
-                   return -1;//Lathos sto anoigma tou arxeiou
+                   return -1;//Error opening the file
                 }
                 if(AM_DeleteEntry(fileDesc1,aD.attrtype,aD.attrlength,s+(aD.offset),recId3)!=AME_OK){
                    AM_PrintError("");
-                   return -1;//Lathos sthn diagrafh eggrafhs apo to eurethrio                                                                                    
+                   return -1;//Error deleting the record from the index                                                                                    
                 }                      
                 if(BF_CloseFile(fileDesc1)!=BFE_OK){
                    BF_PrintError("");
-                   return -1;//Lathos sto kleisimo tou arxeiou
+                   return -1;//Error closing the file
                 }                   
              }
           }
-          (rD.reccnt)--;//Meiwsh twn eggrafwn
+          (rD.reccnt)--;//Decrement the record count
           sunolo++;                                                      
         }
         if(HF_CloseFile(fileDesc)!=HFE_OK){
            HF_PrintError("");
-           return -1;//Lathos sto anoigma ths sxeshs
+           return -1;//Error opening the relation
         }
-        //Enhmerwsh ths eggrafhs
+        //Update the record
         if(HF_InsertRec(relfileDesc,(char *)&rD,sizeof(relDesc))<0){
            HF_PrintError("");
-           return -1;//Lathos sthn eisagwgh ths eggrafhs
+           return -1;//Error inserting the record
         }
     }
-    //Exw where -> suntheth periptwsh
-    else{//Elegxos an uparxei to pedio pou mas dinetai 
+    //Have where clause -> complex case
+    else{//Check if the given field exists
         sprintf(name,"%s.%s",argv[1],argv[2]);
         if((scanDesc2=HF_OpenFileScan(attrfileDesc,sizeof(attrDesc),'c',MAXNAME,MAXNAME,1,name))<0){
            HF_PrintError("");
-           return -1;//Lathos sto anoigma ths sarwshs                                                                                
+           return -1;//Error opening the scan                                                                                
         }
         if((recId2=HF_FindNextRec(scanDesc2,(char *)&aD))<0){
            HF_PrintError("Invalid relation.attribute to delete : ");
-           return -1;//To pedio den uparxei                                            
+           return -1;//The field does not exist                                            
         }
         if(HF_CloseFileScan(scanDesc2)!=HFE_OK){
            HF_PrintError("");
-           return -1;//Lathos sto kleisimo ths sarwshs                                            
+           return -1;//Error closing the scan                                            
         }
-        //An to pedio den exei eurethrio            
+        //If the field has no index            
         if((aD.indexed)==0){
            (aD.valuecnt)--;
            if(HF_DeleteRec(attrfileDesc,recId2,sizeof(attrDesc))!=HFE_OK){
               HF_PrintError("");
-              return -1;//Lathos sth diagrafh ths eggrafhs
+              return -1;//Error deleting the record
            }
            if(HF_InsertRec(attrfileDesc,(char *)&aD,sizeof(attrDesc))<0){
               HF_PrintError("");
-              return -1;//Lathos sthn eisagwgh ths eggrafhs
+              return -1;//Error inserting the record
            }
         }
         if((fileDesc=HF_OpenFile(argv[1]))<0){
            HF_PrintError("");
-           return -1;//Lathos sto anoigma ths sxeshs
+           return -1;//Error opening the relation
         }
-        //Analoga me to format tou kathe pediou pairnw thn timh tou gia thn sarwsh
+        //Depending on the format of each field, get its value for the scan
         if(aD.attrtype=='c'){
            timi=malloc(aD.attrlength);
            memcpy(timi,argv[4],aD.attrlength);
@@ -472,32 +472,32 @@ int DM_delete(int argc,char* argv[]){
         while(1){
           if((scanDesc3=HF_OpenFileScan(fileDesc,rD.relwidth,aD.attrtype,aD.attrlength,aD.offset,operand(argv[3]),timi))<0){
              HF_PrintError("");
-             return -1;//Lathos sto anoigma ths sarwshs                                                                                
+             return -1;//Error opening the scan                                                                                
           }
           if((recId3=HF_FindNextRec(scanDesc3,s))<0){
               if(HF_CloseFileScan(scanDesc3)!=HFE_OK){
                  HF_PrintError("");
-                 return -1;//Lathos sto kleisimo ths sarwshs                                            
+                 return -1;//Error closing the scan                                            
               }
               break;
           }
           if(HF_CloseFileScan(scanDesc3)!=HFE_OK){
              HF_PrintError("");
-             return -1;//Lathos sto kleisimo ths sarwshs                                            
+             return -1;//Error closing the scan                                            
           }
-          //Sbhnw thn eggrafh          
+          //Delete the record
           if(HF_DeleteRec(fileDesc,recId3,rD.relwidth)!=HFE_OK){
              HF_PrintError("");
-             return -1;//Lathos sth diagrafh ths eggrafhs
+             return -1;//Error deleting the record
           }
-          //An to pedio exei eurethrio
+          //If the field has an index
           if((aD.indexed)==1){
              sprintf(name1,"%s.%d",argv[1],aD.indexno);
              if((fileDesc1=BF_OpenFile(name1))<0){
                 BF_PrintError(""); 
                 return -1;
              }
-             //Sbhnw thn eggrafh apo to eurethrio
+             //Delete the record from the index
              if(AM_DeleteEntry(fileDesc1,aD.attrtype,aD.attrlength,s+(aD.offset),recId3)!=AME_OK){
                 AM_PrintError("");
                 return -1;                                                                                    
@@ -507,21 +507,21 @@ int DM_delete(int argc,char* argv[]){
                 return -1;
              }                   
           }
-          (rD.reccnt)--;//Meiwnw ton arithmo twn eggrafwn
+          (rD.reccnt)--;//Decrement the record count
           sunolo++;                                                    
         }
         if(HF_CloseFile(fileDesc)!=HFE_OK){
            HF_PrintError("");
-           return -1;//Lathos sto anoigma ths sxeshs
+           return -1;//Error opening the relation
         }
-        //Enhmerwsh ths eggrafhs
+        //Update the record
         if(HF_InsertRec(relfileDesc,(char *)&rD,sizeof(relDesc))<0){
            HF_PrintError("");
-           return -1;//Lathos sthn eisagwgh ths eggrafhs
+           return -1;//Error inserting the record
         }
         free(timi); 
     }
-    //Apodesmeush mnhmhs
+    //Free memory
     free(s);
     if(sunolo==1){
        printf("\n%d rec was successfully deleted\n",sunolo);              
@@ -540,11 +540,11 @@ int DM_select(int argc,char* argv[]){
     attrDesc aD;
     void *value;
     
-    //Elegxos an yparxei proswrinos pinakas
+    //Check if a temporary table exists
     if(argc%2!=0){
        shift=0;
        intoflag=1;
-       //N=plithos gnwrismatwn pou proballontai
+       //N=number of projected attributes
        N=atoi(argv[2]);
        for(i=3;i<2*N+3;i+=2){
         if(strcmp(argv[3],argv[i])!=0){
@@ -552,7 +552,7 @@ int DM_select(int argc,char* argv[]){
            return -1;
          }
        }
-       //Ftiaxnw ta orismata pou tha parei h UT_Create
+       //Build the arguments that UT_Create will receive
        intoargc=2+2*N;
        if((intoargv=malloc((intoargc+1)*sizeof(char *)))==NULL){
            return -1;
@@ -572,7 +572,7 @@ int DM_select(int argc,char* argv[]){
           }                             
           if(HF_FindNextRec(intoscanDesc,(char *)&aD)<0){
              HF_PrintError("Invalid relation.attribute to project (into) : ");
-             return -1;//To pedio den uparxei                                            
+             return -1;//The field does not exist                                            
           }
           sscanf(aD.attrname,"%*[^'.'].%s",intoargv[k]);
           if(aD.attrtype=='c'){
@@ -583,11 +583,11 @@ int DM_select(int argc,char* argv[]){
           } 
           if(HF_CloseFileScan(intoscanDesc)!=HFE_OK){
              HF_PrintError("");
-             return -1;//Lathos sto kleisimo ths sarwshs                                            
+             return -1;//Error closing the scan                                            
           }
        }
        intoargv[intoargc]=NULL;
-       //Dhmiourgia tou proswrinou pinaka me ta katallhla orismata pou exoume dwsei
+       //Create the temporary table with the appropriate arguments we have provided
        if(UT_create(intoargc,intoargv)<0){
          printf("Temporary table couldn't be created\n");
          return -1;
@@ -606,9 +606,9 @@ int DM_select(int argc,char* argv[]){
        insertargv[insertargc]=NULL;
        
     }
-    else{                  //den yparxei proswrinos pinakas
+    else{                  //no temporary table
        shift=-1;
-       //N=plithos gnwrismatwn pou proballontai
+       //N=number of projected attributes
        N=atoi(argv[1]);
        for(i=3+shift;i<2*N+shift+3;i+=2){
         if(strcmp(argv[3+shift],argv[i])!=0){
@@ -617,14 +617,14 @@ int DM_select(int argc,char* argv[]){
         }
        }
     }
-    //Elegxos orismatwn
+    //Check arguments
     if(N*2+3+shift!=argc){//
        if(N*2+3+shift+4!=argc){//
           printf("Invalid argc\n");
-          return -1;//lathos sta orismata
+          return -1;//invalid arguments
        }
        else{
-            whereflag=1; //exoume kai where
+            whereflag=1; //we also have a where clause
             if(strcmp(argv[3+shift],argv[argc-4])!=0){
                printf("Relation to select differs from the one to project\n");
                return -1;                                          
@@ -632,20 +632,20 @@ int DM_select(int argc,char* argv[]){
        }
     }
     
-    //Elegxos gia uparksh sxeshs 
+    //Check if the relation exists
     if((scanDesc1=HF_OpenFileScan(relfileDesc,sizeof(relDesc),'c',MAXNAME,0,1,argv[3+shift]))<0){
        HF_PrintError("");
        return -1;                                                                                
     }
     if((recId1=HF_FindNextRec(scanDesc1,(char *)&rD))<0){
        HF_PrintError("Invalid relation to project : ");
-       return -1;//H sxesh den uparxei                                           
+       return -1;//The relation does not exist                                           
     }
     if(HF_CloseFileScan(scanDesc1)!=HFE_OK){
        HF_PrintError("");
-       return -1;//Lathos sto kleisimo ths sarwshs  
+       return -1;//Error closing the scan  
     }
-    //Elegxos an uparxoun oi sxeseis.pedia pou mas dinontai
+    //Check if the given relation.fields exist
     for(i=3+shift;i<2*N+3+shift;i+=2){
         sprintf(name,"%s.%s",argv[i],argv[i+1]);
         if((scanDesc2=HF_OpenFileScan(attrfileDesc,sizeof(attrDesc),'c',MAXNAME,MAXNAME,1,name))<0){
@@ -654,30 +654,30 @@ int DM_select(int argc,char* argv[]){
         }
         if((recId2=HF_FindNextRec(scanDesc2,(char *)&aD))<0){
           HF_PrintError("Invalid relation.attribute to project : ");
-          return -1;//To pedio den uparxei                                            
+          return -1;//The field does not exist                                            
         }
         if(HF_CloseFileScan(scanDesc2)!=HFE_OK){
           HF_PrintError("");
-          return -1;//Lathos sto kleisimo ths sarwshs                                            
+          return -1;//Error closing the scan                                            
         }
     }
     //An den exw where
     if(whereflag==0){
       argument=argc;
-      //Anoigma ths sxeshs
+      //Open the relation
       if((fileDesc=HF_OpenFile(argv[3+shift]))<0){
         HF_PrintError("");
-        return -1;//Lathos sto anoigma ths sxeshs
+        return -1;//Error opening the relation
       }
-      //Anoigma sarwshs me null gia na mas epistrepsei oles tis eggrafes ths sxeshs pou dhlwnei to TARGET_LIST
+      //Open scan with null to return all records of the relation specified in TARGET_LIST
       if((scanDesc2=HF_OpenFileScan(fileDesc,rD.relwidth,'c',MAXNAME,MAXNAME,1,NULL))<0){
         HF_PrintError("");
         return -1;                                                                                
       }
-    }//An exw where
+    }//If we have a where clause
     else{
       argument=argc-4;
-      //Elegxos an uparxei to pedio epiloghs
+      //Check if the selection field exists
       sprintf(name,"%s.%s",argv[argc-4],argv[argc-3]);//
       if((scanDesc2=HF_OpenFileScan(attrfileDesc,sizeof(attrDesc),'c',MAXNAME,MAXNAME,1,name))<0){
           HF_PrintError("");
@@ -685,7 +685,7 @@ int DM_select(int argc,char* argv[]){
       }
       if((recId2=HF_FindNextRec(scanDesc2,(char *)&aD))<0){
           HF_PrintError("Invalid relation.attribute to select with condition : ");
-          return -1;//To pedio den uparxei                                            
+          return -1;//The field does not exist                                            
       }
       memcpy(&attrlength,&(aD.attrlength),sizeof(int));
       memcpy(&attrtype,&(aD.attrtype),sizeof(char));
@@ -708,32 +708,32 @@ int DM_select(int argc,char* argv[]){
       }    
       if(HF_CloseFileScan(scanDesc2)!=HFE_OK){
           HF_PrintError("");
-          return -1;//Lathos sto kleisimo ths sarwshs                                            
+          return -1;//Error closing the scan                                            
       }
-      //Anoigma sarwshs me ta katallhla orismata gia na mas epistrepsei oles tis eggrafes ths sxeshs pou dhlwnei to TARGET_LIST
-      //kai ikanopoioun thn sunthikh condition
-      //An h sxesh.pedio den exei eurethrio
+      //Open scan with appropriate arguments to return all records of the relation specified in TARGET_LIST
+      //that satisfy the condition
+      //If the relation.field has no index
       if(indexed==0){
-         //Anoigma ths sxeshs epiloghs
+         //Open the selection relation
          if((fileDesc=HF_OpenFile(argv[argc-4]))<0){//
             HF_PrintError("");
-            return -1;//Lathos sto anoigma ths sxeshs
+            return -1;//Error opening the relation
          }            
          if((scanDesc2=HF_OpenFileScan(fileDesc,rD.relwidth,attrtype,attrlength,offset,op,value))<0){
             HF_PrintError("");
             return -1;                                                                                
          }
       }
-      else{//An h sxesh.pedio exei eurethrio
-         //Anoigma ths sxeshs epiloghs
+      else{//If the relation.field has an index
+         //Open the selection relation
          if((fileDesc=HF_OpenFile(argv[argc-4]))<0){//
             HF_PrintError("");
-            return -1;//Lathos sto anoigma ths sxeshs
+            return -1;//Error opening the relation
          }
          sprintf(name,"%s.%d",argv[argc-4],aD.indexno);
          if((fileDesc1=BF_OpenFile(name))<0){//
               BF_PrintError("");
-              return -1;//Lathos sto anoigma ths sxeshs
+              return -1;//Error opening the relation
          }
          if((scanDesc2=AM_OpenIndexScan(fileDesc1,attrtype,attrlength,op,value))<0){
               AM_PrintError("");
@@ -743,7 +743,7 @@ int DM_select(int argc,char* argv[]){
     }
     if((s=malloc(rD.relwidth))==NULL){
        return -1;
-    }//Tupwmata
+    }//Print output
     printf("\nSELECT\n");
     for(i=0;i<N;i++){
        printf("____________________________");
@@ -779,7 +779,7 @@ int DM_select(int argc,char* argv[]){
         }
         if((recId2=HF_FindNextRec(scanDesc,(char *)&aD))<0){
           HF_PrintError("");
-          return -1;//To pedio den uparxei                                            
+          return -1;//The field does not exist                                            
         }
         if(i==3+shift){
           printf("|");
@@ -809,11 +809,11 @@ int DM_select(int argc,char* argv[]){
         }
         if(HF_CloseFileScan(scanDesc)!=HFE_OK){
           HF_PrintError("");
-          return -1;//Lathos sto kleisimo ths sarwshs                                            
+          return -1;//Error closing the scan                                            
         }
       }
       printf("\n");
-      //An exw proswrino pinaka (INTO)
+      //If we have a temporary table (INTO)
       if(intoflag==1){
         if(DM_insert(insertargc,insertargv)<0){
            return -1;
@@ -840,23 +840,23 @@ int DM_select(int argc,char* argv[]){
       if(indexed==0){
         if(HF_CloseFileScan(scanDesc2)!=HFE_OK){
           HF_PrintError("");
-          return -1;//Lathos sto kleisimo ths sarwshs                                            
+          return -1;//Error closing the scan                                            
         }
       }
       else{
         if(AM_CloseIndexScan(scanDesc2)!=AME_OK){
           AM_PrintError("");
-          return -1;//Lathos sto kleisimo ths sarwshs                                            
-        }                                               //Bug sto protupo AM,otan anoigei sarwsh me < h <= sto AM mallon den ginetai 
-        /*if(BF_CloseFile(fileDesc1)!=BFE_OK){          //unpin kapoio block kai den mporei na kleisei to arxeio.
-          BF_PrintError("");                            //H klhsh ths BF_CloseFile apotugxanei me mhnuma block karfwmeno sth mnhmh.
-          return -11;//Lathos sto anoigma ths sxeshs
+          return -1;//Error closing the scan                                            
+        }                                               //Bug in the AM module: when opening a scan with < or <= in AM, it probably does not
+        /*if(BF_CloseFile(fileDesc1)!=BFE_OK){          //unpin some block and cannot close the file.
+          BF_PrintError("");                            //The BF_CloseFile call fails with message block pinned in memory.
+          return -11;//Error opening the relation
         }*/
       }
     }
     if(HF_CloseFile(fileDesc)!=HFE_OK){
        HF_PrintError("");
-       return -1;//Lathos sto anoigma ths sxeshs
+       return -1;//Error opening the relation
     }
     if(whereflag==1){
       free(value);                 
@@ -881,11 +881,11 @@ int DM_join(int argc,char* argv[]){
     attrDesc aD1,aD2,aD;
     char *s,*s1,*s2,name[2*MAXNAME+sizeof(char)],Rname[MAXNAME],Sname[MAXNAME],Stype,**intoargv,**insertargv,attrtype;
     
-    //Elegxos an yparxei proswrinos pinakas
+    //Check if a temporary table exists
     if(argc%2==0){
        shift=0;
        intoflag=1;
-       //N=plithos gnwrismatwn pou proballontai
+       //N=number of projected attributes
        N=atoi(argv[2]);
        for(i=3;i<2*N+3;i+=2){
            if(strcmp(argv[i],argv[argc-5])!=0 && strcmp(argv[i],argv[argc-2])!=0){
@@ -893,7 +893,7 @@ int DM_join(int argc,char* argv[]){
                return -1;
            }
        }
-       //Ftiaxnw ta orismata pou tha parei h UT_Create
+       //Build the arguments that UT_Create will receive
        intoargc=2+2*N;
        if((intoargv=malloc((intoargc+1)*sizeof(char *)))==NULL){
            return -1;
@@ -913,7 +913,7 @@ int DM_join(int argc,char* argv[]){
           }                             
           if(HF_FindNextRec(intoscanDesc,(char *)&aD)<0){
              HF_PrintError("Invalid relation.attribute to project (into) : ");
-             return -1;//To pedio den uparxei                                            
+             return -1;//The field does not exist                                            
           }
           sscanf(aD.attrname,"%*[^'.'].%s",intoargv[k]);
           if(aD.attrtype=='c'){
@@ -924,11 +924,11 @@ int DM_join(int argc,char* argv[]){
           }  
           if(HF_CloseFileScan(intoscanDesc)!=HFE_OK){
              HF_PrintError("");
-             return -1;//Lathos sto kleisimo ths sarwshs                                            
+             return -1;//Error closing the scan                                            
           }
        }
        intoargv[intoargc]=NULL;
-       //Dhmiourgia tou proswrinou pinaka me ta katallhla orismata pou exoume dwsei
+       //Create the temporary table with the appropriate arguments we have provided
        if(UT_create(intoargc,intoargv)<0){
          printf("Temporary table couldn't be created\n");
          return -1;
@@ -946,9 +946,9 @@ int DM_join(int argc,char* argv[]){
        strcpy(insertargv[1],argv[1]);
        insertargv[insertargc]=NULL;
     }
-    else{                  //den yparxei proswrinos pinakas
+    else{                  //no temporary table
        shift=-1;
-       //N=plithos gnwrismatwn pou proballontai
+       //N=number of projected attributes
        N=atoi(argv[1]);
        for(i=3+shift;i<2*N+3+shift;i+=2){
            if(strcmp(argv[i],argv[argc-5])!=0 && strcmp(argv[i],argv[argc-2])!=0){
@@ -957,11 +957,11 @@ int DM_join(int argc,char* argv[]){
            }
        }
     }
-    //Elegxos orismatwn
+    //Check arguments
     if(N*2+3+shift+5!=argc){
        printf("Invalid argc\n");
-       return -1;//lathos sta orismata
-    }//Elegxos an uparxoun oi sxeseis.pedia pou mas dinontai
+       return -1;//invalid arguments
+    }//Check if the given relation.fields exist
     for(i=3+shift;i<2*N+3+shift;i+=2){
         sprintf(name,"%s.%s",argv[i],argv[i+1]);
         if((scanDesc=HF_OpenFileScan(attrfileDesc,sizeof(attrDesc),'c',MAXNAME,MAXNAME,1,name))<0){
@@ -970,25 +970,25 @@ int DM_join(int argc,char* argv[]){
         }
         if(HF_FindNextRec(scanDesc,(char *)&aD)<0){
            HF_PrintError("Invalid relation.attribute to project : ");
-           return -1;//To pedio den uparxei                                            
+           return -1;//The field does not exist                                            
         }
         if(HF_CloseFileScan(scanDesc)!=HFE_OK){
            HF_PrintError("");
-           return -1;//Lathos sto kleisimo ths sarwshs                                            
+           return -1;//Error closing the scan                                            
         }
     }
-    //Elegxos gia uparksh sxesewn pros zeuksh
+    //Check if the relations to be joined exist
     if((scanDesc1=HF_OpenFileScan(relfileDesc,sizeof(relDesc),'c',MAXNAME,0,1,argv[argc-5]))<0){//
         HF_PrintError("");
         return -1;                                                                                
     }
     if(HF_FindNextRec(scanDesc1,(char *)&rD1)<0){
        HF_PrintError("Invalid relation to join : ");
-       return -1;//H sxesh den uparxei                                           
+       return -1;//The relation does not exist                                           
     }
     if(HF_CloseFileScan(scanDesc1)!=HFE_OK){
        HF_PrintError("");
-       return -1;//Lathos sto kleisimo ths sarwshs                                            
+       return -1;//Error closing the scan                                            
     }
     if((scanDesc2=HF_OpenFileScan(relfileDesc,sizeof(relDesc),'c',MAXNAME,0,1,argv[argc-2]))<0){//
         HF_PrintError("");
@@ -996,14 +996,14 @@ int DM_join(int argc,char* argv[]){
     }
     if(HF_FindNextRec(scanDesc2,(char *)&rD2)<0){
        HF_PrintError("Invalid relation to join : ");
-       return -1;//H sxesh den uparxei                                           
+       return -1;//The relation does not exist                                           
     }
     if(HF_CloseFileScan(scanDesc2)!=HFE_OK){
        HF_PrintError("");
-       return -1;//Lathos sto kleisimo ths sarwshs                                            
+       return -1;//Error closing the scan                                            
     }
-    //Elegxos gia uparksh sxesewn.pediwn pros zeuksh
-    //Prwth sxesh.pedio
+    //Check if the relation.fields to be joined exist
+    //First relation.field
     sprintf(name,"%s.%s",argv[argc-5],argv[argc-4]);//
     if((scanDesc3=HF_OpenFileScan(attrfileDesc,sizeof(attrDesc),'c',MAXNAME,MAXNAME,1,name))<0){
         HF_PrintError("");
@@ -1012,13 +1012,13 @@ int DM_join(int argc,char* argv[]){
     if(HF_FindNextRec(scanDesc3,(char *)&aD1)<0){
        HF_PrintError("Invalid relation.attribute to join : ");
        HF_PrintError("");
-       return -1;//To pedio den uparxei                                            
+       return -1;//The field does not exist                                            
     }
     if(HF_CloseFileScan(scanDesc3)!=HFE_OK){
        HF_PrintError("");
-       return -1;//Lathos sto kleisimo ths sarwshs                                            
+       return -1;//Error closing the scan                                            
     }
-    //Deuterh sxesh.pedio
+    //Second relation.field
     sprintf(name,"%s.%s",argv[argc-2],argv[argc-1]);//
     if((scanDesc4=HF_OpenFileScan(attrfileDesc,sizeof(attrDesc),'c',MAXNAME,MAXNAME,1,name))<0){
         HF_PrintError("");
@@ -1026,15 +1026,15 @@ int DM_join(int argc,char* argv[]){
     }
     if(HF_FindNextRec(scanDesc4,(char *)&aD2)<0){
        HF_PrintError("Invalid relation.attribute to join : ");
-       return -1;//To pedio den uparxei                                            
+       return -1;//The field does not exist                                            
     }
     if(HF_CloseFileScan(scanDesc4)!=HFE_OK){
        HF_PrintError("");
-       return -1;//Lathos sto kleisimo ths sarwshs                                            
+       return -1;//Error closing the scan                                            
     }
-    //An kamia sxesh.pedio den exei eurethrio h an kai oi duo sxeseis.pedia exoun eurethrio
+    //If neither relation.field has an index or if both relation.fields have indexes
     if(( (aD1.indexed)==0 && (aD2.indexed)==0 ) || ( (aD1.indexed)==1 && (aD2.indexed)==1 )){
-      //Analogws me ta reccnt dialegw poia sxesh tha einai ekswterikh kai poia eswterikh
+      //Based on reccnt, choose which relation will be outer and which inner
       if((rD1.reccnt)-(rD2.reccnt)<=0){
         strcpy(Rname,argv[argc-5]);//       
         strcpy(Sname,argv[argc-2]);//
@@ -1061,7 +1061,7 @@ int DM_join(int argc,char* argv[]){
         Soffset=aD1.offset;
         op=operand(argv[argc-3]);
       }
-    }//Alliws h monh sxesh pou exei eurethrio mpainei eswterikh 
+    }//Otherwise the only relation that has an index becomes the inner one
     else{
        if(aD2.indexed==1){ 
         strcpy(Rname,argv[argc-5]);//       
@@ -1089,35 +1089,35 @@ int DM_join(int argc,char* argv[]){
         Soffset=aD1.offset;
         op=operand(argv[argc-3]);
        }  
-    }//Anoigoume tis sxeseis
+    }//Open the relations
     if((fileDesc1=HF_OpenFile(Rname))<0){
         HF_PrintError("");
-        return -1;//Lathos sto anoigma ths sxeshs
+        return -1;//Error opening the relation
     }
     if((fileDesc2=HF_OpenFile(Sname))<0){
         HF_PrintError("");
-        return -1;//Lathos sto anoigma ths sxeshs
+        return -1;//Error opening the relation
     }
     if((aD1.indexed)==1 && (aD2.indexed)==1){
        sprintf(name,"%s.%d",Rname,Rindexno);
        if((fD1=BF_OpenFile(name))<0){
            BF_PrintError("");
-           return -1;//Lathos sto anoigma ths sxeshs
+           return -1;//Error opening the relation
        }
        sprintf(name,"%s.%d",Sname,Sindexno);
        if((fD2=BF_OpenFile(name))<0){
            BF_PrintError("");
-           return -1;//Lathos sto anoigma ths sxeshs
+           return -1;//Error opening the relation
        }                  
     }
     else if(( (aD1.indexed)==1 && (aD2.indexed)==0 ) || ( (aD1.indexed)==0 && (aD2.indexed)==1 )){
        sprintf(name,"%s.%d",Sname,Sindexno);
        if((fD1=BF_OpenFile(name))<0){
            BF_PrintError("");
-           return -1;//Lathos sto anoigma ths sxeshs
+           return -1;//Error opening the relation
        }  
     }
-    //Den exw kanena index h exw 2 index
+    //I have no index or I have 2 indexes
     if(((aD1.indexed)==0 && (aD2.indexed)==0) || ( (aD1.indexed)==1 && (aD2.indexed)==0 ) || ( (aD1.indexed)==0 && (aD2.indexed)==1 )){
          if((scanDesc5=HF_OpenFileScan(fileDesc1,Rrelwidth,'c',MAXNAME,MAXNAME,1,NULL))<0){
              HF_PrintError("");
@@ -1146,7 +1146,7 @@ int DM_join(int argc,char* argv[]){
         printf("|%-27s",name);   
     }
     printf("|\n");
-    //Algorithmos emfwliasmenwn brogxwn
+    //Nested loops algorithm
     while(1){
           if((aD1.indexed)==0 && (aD2.indexed)==0){
             if(HF_FindNextRec(scanDesc5,s1)<0){ 
@@ -1209,7 +1209,7 @@ int DM_join(int argc,char* argv[]){
                  }
                  if(HF_FindNextRec(scanDesc,(char *)&aD)<0){
                     HF_PrintError("");
-                    return -1;//To pedio den uparxei                                            
+                    return -1;//The field does not exist                                            
                  }
                  if(i==3+shift){
                     printf("|");
@@ -1239,11 +1239,11 @@ int DM_join(int argc,char* argv[]){
                  }
                  if(HF_CloseFileScan(scanDesc)!=HFE_OK){
                     HF_PrintError("");
-                    return -1;//Lathos sto kleisimo ths sarwshs                                            
+                    return -1;//Error closing the scan                                            
                  }   
               }
               printf("\n");      
-              //An exw proswrino pinaka (INTO)
+              //If we have a temporary table (INTO)
               if(intoflag==1){
                  if(DM_insert(insertargc,insertargv)<0){
                         return -1;                                      
@@ -1253,13 +1253,13 @@ int DM_join(int argc,char* argv[]){
           if((aD1.indexed)==0 && (aD2.indexed)==0){
               if(HF_CloseFileScan(scanDesc6)!=HFE_OK){
                  HF_PrintError("");
-                 return -1;//Lathos sto kleisimo ths sarwshs                                            
+                 return -1;//Error closing the scan                                            
               }
           }
           else{
               if(AM_CloseIndexScan(scanDesc6)!=AME_OK){
                  AM_PrintError("");
-                 return -1;//Lathos sto kleisimo ths sarwshs                                            
+                 return -1;//Error closing the scan                                            
               }
           }            
     }
@@ -1272,40 +1272,40 @@ int DM_join(int argc,char* argv[]){
     }
     else{
         printf("\n%d recs were successfully joined\n",sunolo);
-    }//Kleisimo sarwsewn kai sxesewn
+    }//Close scans and relations
     if(((aD1.indexed)==0 && (aD2.indexed)==0) || ( (aD1.indexed)==1 && (aD2.indexed)==0 ) || ( (aD1.indexed)==0 && (aD2.indexed)==1 )){
          if(HF_CloseFileScan(scanDesc5)!=HFE_OK){
             HF_PrintError("");
-            return -1;//Lathos sto kleisimo ths sarwshs                                            
+            return -1;//Error closing the scan                                            
          }
          if(( (aD1.indexed)==1 && (aD2.indexed)==0 ) || ( (aD1.indexed)==0 && (aD2.indexed)==1 )){
             if(BF_CloseFile(fD1)!=BFE_OK){
                BF_PrintError("");
-               return -1;//Lathos sto kleisimo ths sarwshs                                            
+               return -1;//Error closing the scan                                            
             }      
          }
     }
     else{
          if(AM_CloseIndexScan(scanDesc5)!=AME_OK){
             AM_PrintError("");
-            return -1;//Lathos sto kleisimo ths sarwshs                                            
+            return -1;//Error closing the scan                                            
          } 
          if(BF_CloseFile(fD1)!=BFE_OK){
             BF_PrintError("");
-            return -1;//Lathos sto kleisimo ths sarwshs                                            
+            return -1;//Error closing the scan                                            
          }
          if(BF_CloseFile(fD2)!=BFE_OK){
             BF_PrintError("");
-            return -1;//Lathos sto kleisimo ths sarwshs                                            
+            return -1;//Error closing the scan                                            
          }
     }
     if(HF_CloseFile(fileDesc1)!=HFE_OK){
        HF_PrintError("");
-       return -1;//Lathos sto kleisimo ths sarwshs                                            
+       return -1;//Error closing the scan                                            
     }
     if(HF_CloseFile(fileDesc2)!=HFE_OK){
        HF_PrintError("");   
-       return -1;//Lathos sto kleisimo ths sarwshs                                            
+       return -1;//Error closing the scan                                            
     }
     free(s1);
     free(s2);                  
@@ -1328,25 +1328,25 @@ int DM_selectivejoin(int argc,char *argv[]){
     attrDesc aD1,aD2,aD3,aD;
     relDesc rD1,rD2,rD;
     void *value;
-    //Elegxos an yparxei proswrinos pinakas
+    //Check if a temporary table exists
     if(argc%2==0){
        shift=0;
        intoflag=1;
-       //N=plithos gnwrismatwn pou proballontai
+       //N=number of projected attributes
        N=atoi(argv[2]);
     }
-    else{//den yparxei proswrinos pinakas
+    else{//no temporary table
        shift=-1;
-       //N=plithos gnwrismatwn pou proballontaim
+       //N=number of projected attributesm
        N=atoi(argv[1]);
     }
-    //Elegxos orismatwn
+    //Check arguments
     if(N*2+3+shift+9!=argc){//
        printf("Invalid argc\n");
-       return -1;//lathos sta orismata
+       return -1;//invalid arguments
     }
     
-    //Elegxos an uparxoun ta sxeseis.pedia pou mas dinontai
+    //Check if the given relation.fields exist
     for(i=3+shift;i<2*N+3+shift;i+=2){
         sprintf(name,"%s.%s",argv[i],argv[i+1]);
         if((scanDesc=HF_OpenFileScan(attrfileDesc,sizeof(attrDesc),'c',MAXNAME,MAXNAME,1,name))<0){
@@ -1355,27 +1355,27 @@ int DM_selectivejoin(int argc,char *argv[]){
         }
         if(HF_FindNextRec(scanDesc,(char *)&aD1)<0){
          HF_PrintError("Invalid relation.attribute to project : ");
-          return -1;//To pedio den uparxei                                            
+          return -1;//The field does not exist                                            
         }
         if(HF_CloseFileScan(scanDesc)!=HFE_OK){
           HF_PrintError("");
-          return -1;//Lathos sto kleisimo ths sarwshs                                            
+          return -1;//Error closing the scan                                            
         }
     }
-    //Elegxos uparkshs sxeshs pros epilogh
+    //Check if the selection relation exists
     if((scanDesc=HF_OpenFileScan(relfileDesc,sizeof(relDesc),'c',MAXNAME,0,1,argv[argc-9]))<0){
        HF_PrintError("");
        return -1;                                                                                
     }
     if(HF_FindNextRec(scanDesc,(char *)&rD)<0){
        HF_PrintError("Invalid relation to select with condition : ");
-       return -1;//H sxesh epiloghs den uparxei                                           
+       return -1;//The selection relation does not exist                                           
     }
     if(HF_CloseFileScan(scanDesc)!=HFE_OK){
       HF_PrintError("");
-      return -1;//Lathos sto kleisimo ths sarwshs  
+      return -1;//Error closing the scan  
     }
-    //Elegxos uparkshs sxesh.pedio pros epilogh
+    //Check if the selection relation.field exists
     sprintf(name,"%s.%s",argv[argc-9],argv[argc-8]);//
     if((scanDesc5=HF_OpenFileScan(attrfileDesc,sizeof(attrDesc),'c',MAXNAME,MAXNAME,1,name))<0){
         HF_PrintError("");
@@ -1383,41 +1383,41 @@ int DM_selectivejoin(int argc,char *argv[]){
     }
     if(HF_FindNextRec(scanDesc5,(char *)&aD3)<0){
         HF_PrintError("Invalid relation.attribute to select with condition : ");
-        return -1;//To pedio den uparxei                                            
+        return -1;//The field does not exist                                            
     }
     if(HF_CloseFileScan(scanDesc5)!=HFE_OK){
       HF_PrintError("");
-      return -1;//Lathos sto kleisimo ths sarwshs  
+      return -1;//Error closing the scan  
     }
-    //Elegxos gia uparksh sxesewn pros zeuksh
-    //Sxesh 1
+    //Check if the relations to be joined exist
+    //Relation 1
     if((scanDesc1=HF_OpenFileScan(relfileDesc,sizeof(relDesc),'c',MAXNAME,0,1,argv[argc-5]))<0){
        HF_PrintError("");
        return -1;                                                                                
     }
     if(HF_FindNextRec(scanDesc1,(char *)&rD1)<0){
        HF_PrintError("Invalid relation to join : ");
-       return -1;//H sxesh den uparxei                                           
+       return -1;//The relation does not exist                                           
     }
     if(HF_CloseFileScan(scanDesc1)!=HFE_OK){
       HF_PrintError("");
-      return -1;//Lathos sto kleisimo ths sarwshs  
+      return -1;//Error closing the scan  
     }
-    //Sxesh 2
+    //Relation 2
     if((scanDesc2=HF_OpenFileScan(relfileDesc,sizeof(relDesc),'c',MAXNAME,0,1,argv[argc-2]))<0){
        HF_PrintError("");
        return -1;                                                                                
     }
     if(HF_FindNextRec(scanDesc2,(char *)&rD2)<0){
        HF_PrintError("Invalid relation to join : ");
-       return -1;//H sxesh den uparxei                                           
+       return -1;//The relation does not exist                                           
     }
     if(HF_CloseFileScan(scanDesc2)!=HFE_OK){
       HF_PrintError("");
-      return -1;//Lathos sto kleisimo ths sarwshs  
+      return -1;//Error closing the scan  
     }
-    //Elegxos gia uparksh sxesewn.pediwn pros zeuksh
-    //Prwth sxesh.pedio
+    //Check if the relation.fields to be joined exist
+    //First relation.field
     sprintf(name,"%s.%s",argv[argc-5],argv[argc-4]);//
     if((scanDesc3=HF_OpenFileScan(attrfileDesc,sizeof(attrDesc),'c',MAXNAME,MAXNAME,1,name))<0){
         HF_PrintError("");
@@ -1425,12 +1425,12 @@ int DM_selectivejoin(int argc,char *argv[]){
     }
     if(HF_FindNextRec(scanDesc3,(char *)&aD1)<0){
         HF_PrintError("Invalid relation.attribute to join : ");
-        return -1;//To pedio den uparxei                                            
+        return -1;//The field does not exist                                            
     }
     if(HF_CloseFileScan(scanDesc3)!=HFE_OK){
       HF_PrintError("");
-      return -1;//Lathos sto kleisimo ths sarwshs  
-    }//Deuterh sxesh.pedio
+      return -1;//Error closing the scan  
+    }//Second relation.field
     sprintf(name,"%s.%s",argv[argc-2],argv[argc-1]);//
     if((scanDesc4=HF_OpenFileScan(attrfileDesc,sizeof(attrDesc),'c',MAXNAME,MAXNAME,1,name))<0){
         HF_PrintError("");
@@ -1438,28 +1438,28 @@ int DM_selectivejoin(int argc,char *argv[]){
     }
     if(HF_FindNextRec(scanDesc4,(char *)&aD2)<0){
         HF_PrintError("Invalid relation.attribute to join : ");
-        return -1;//To pedio den uparxei                                            
+        return -1;//The field does not exist                                            
     }
     if(HF_CloseFileScan(scanDesc4)!=HFE_OK){
       HF_PrintError("");
-      return -1;//Lathos sto kleisimo ths sarwshs  
-    }//Elegxos an h prwth sxesh pros zeuksh einai idia me th sxesh epiloghs
+      return -1;//Error closing the scan  
+    }//Check if the first join relation is the same as the selection relation
     if(strcmp(argv[argc-9],argv[argc-5])!=0){
         printf("Relation to select differs from the one to join");
-        return -1;//Lathos orismata , h sxesh epiloghs den einai idia me thn prwth sxesh gia zeuksh                                         
+        return -1;//Invalid arguments, the selection relation is not the same as the first join relation                                         
     }
-    //Telos elegxwn
+    //End of checks
     if((value=malloc(aD3.attrlength))==NULL){
         return -1;                                    
     } 
     op2=operand(argv[argc-3]);
     memcpy(value,argv[argc-6],aD3.attrlength);
-    //Ypologismos ths epilektikothtas
+    //Calculate the selectivity
     selvalue=(rD.reccnt)*selectivity(aD3,op2,value);
-    //Periptwseis pou tha klhthei h select kai h koin
+    //Cases where select and join will be called
     if((aD1.indexed==1 && aD2.indexed==0) || (aD1.indexed==1 && aD2.indexed==1 && selvalue>(rD2.reccnt)) ||
        (aD1.indexed==0 && aD2.indexed==0 && selvalue>(rD2.reccnt))){
-       //Ftiaxnoume ta orismata ths select
+       //Build the arguments for select
        selectargc=3+2*(rD.attrcnt)+4;
        if((selectargv=malloc((selectargc+1)*sizeof(char *)))==NULL){
            return -1;
@@ -1481,13 +1481,13 @@ int DM_selectivejoin(int argc,char *argv[]){
        for(k=0;k<2*(rD.attrcnt);k+=2){
           if(HF_FindNextRec(selscanDesc,(char *)&aD)<0){
              HF_PrintError("");
-             return -1;//To pedio den uparxei                                            
+             return -1;//The field does not exist                                            
           }
           sscanf(aD.attrname,"%[^'.'].%s",selectargv[k+3],selectargv[k+4]);
        }
        if(HF_CloseFileScan(selscanDesc)!=HFE_OK){
           HF_PrintError("");
-          return -1;//Lathos sto kleisimo ths sarwshs                                            
+          return -1;//Error closing the scan                                            
        }
        strcpy(selectargv[selectargc-4],argv[argc-9]);
        strcpy(selectargv[selectargc-3],argv[argc-8]);
@@ -1499,7 +1499,7 @@ int DM_selectivejoin(int argc,char *argv[]){
           return -1;
        }
        
-       //Ftiaxnw ta orismata ths join    
+       //Build the arguments for join
        joinargc=3+shift+2*N+5;
        if((joinargv=malloc((joinargc+1)*sizeof(char *)))==NULL){
            return -1;
@@ -1532,17 +1532,17 @@ int DM_selectivejoin(int argc,char *argv[]){
        if(DM_join(joinargc,joinargv)<0){
          return -1;
        }
-       //Apodesmeush xwrou
+       //Free memory
        for(j=0;j<joinargc;j++){
          free(joinargv[j]);                    
        }
        free(joinargv);
-       //Apodesmeush xwrou
+       //Free memory
        for(j=0;j<selectargc;j++){
          free(selectargv[j]);                    
        }
        free(selectargv);
-       //Katastrefw ton proswrino pinaka ths select
+       //Destroy the temporary table from select
        destargc=2;
        if((destargv=malloc((destargc+1)*sizeof(char *)))==NULL){
            return -1;
@@ -1562,9 +1562,9 @@ int DM_selectivejoin(int argc,char *argv[]){
          free(destargv[j]);                    
        }
        free(destargv);                               
-    }//Periptwsh pou tha kleithei h pipeline
+    }//Case where the pipeline will be called
     else{
-       //Ftiaxnw ta orismata ths pipeline
+       //Build the arguments for pipeline
        pipeargc=argc;
        if((pipeargv=malloc((pipeargc+1)*sizeof(char *)))==NULL){
            return -1;
@@ -1582,7 +1582,7 @@ int DM_selectivejoin(int argc,char *argv[]){
        if(DM_pipeline(pipeargc,pipeargv)<0){
          return -1;
        }
-       //Apodesmeush xwrou
+       //Free memory
        for(j=0;j<pipeargc;j++){
          free(pipeargv[j]);                    
        }
@@ -1600,11 +1600,11 @@ int DM_pipeline(int argc,char *argv[]){
     attrDesc aD1,aD2,aD3,aD4,aD;
     relDesc rD1,rD2,rD;
     float pediofloat;
-    //Elegxos an yparxei proswrinos pinakas
+    //Check if a temporary table exists
     if(argc%2==0){
        shift=0;
        intoflag=1;
-       //N=plithos gnwrismatwn pou proballontai
+       //N=number of projected attributes
        N=atoi(argv[2]);
        for(i=3;i<2*N+3;i+=2){
            if(strcmp(argv[i],argv[argc-5])!=0 && strcmp(argv[i],argv[argc-2])!=0){
@@ -1612,7 +1612,7 @@ int DM_pipeline(int argc,char *argv[]){
                return -1;
            }
        }
-       //Ftiaxnw ta orismata pou tha parei h UT_Create
+       //Build the arguments that UT_Create will receive
        intoargc=2+2*N;
        if((intoargv=malloc((intoargc+1)*sizeof(char *)))==NULL){
            return -1;
@@ -1632,7 +1632,7 @@ int DM_pipeline(int argc,char *argv[]){
           }                             
           if(HF_FindNextRec(intoscanDesc,(char *)&aD)<0){
              HF_PrintError("Invalid relation.attribute to project (into) : ");
-             return -1;//To pedio den uparxei                                            
+             return -1;//The field does not exist                                            
           }
           sscanf(aD.attrname,"%*[^'.'].%s",intoargv[k]);
           if(aD.attrtype=='c'){
@@ -1643,11 +1643,11 @@ int DM_pipeline(int argc,char *argv[]){
           }  
           if(HF_CloseFileScan(intoscanDesc)!=HFE_OK){
              HF_PrintError("");
-             return -1;//Lathos sto kleisimo ths sarwshs                                            
+             return -1;//Error closing the scan                                            
           }
        }
        intoargv[intoargc]=NULL;
-       //Dhmiourgia tou proswrinou pinaka me ta katallhla orismata pou exoume dwsei
+       //Create the temporary table with the appropriate arguments we have provided
        if(UT_create(intoargc,intoargv)<0){
           printf("Temporary table couldn't be created\n");
           return -1;
@@ -1665,9 +1665,9 @@ int DM_pipeline(int argc,char *argv[]){
        strcpy(insertargv[1],argv[1]);
        insertargv[insertargc]=NULL;
     }
-    else{                  //den yparxei prosorinos pinakas
+    else{                  //no temporary table
        shift=-1;
-       //N=plithos gnwrismatwn pou proballontai
+       //N=number of projected attributes
        N=atoi(argv[1]);
        for(i=3+shift;i<2*N+3+shift;i+=2){
            if(strcmp(argv[i],argv[argc-5])!=0 && strcmp(argv[i],argv[argc-2])!=0){
@@ -1676,12 +1676,12 @@ int DM_pipeline(int argc,char *argv[]){
            }
        }
     }
-    //Elegxos orismatwn
+    //Check arguments
     if(N*2+3+shift+9!=argc){//
        printf("Invalid argc\n");
-       return -1;//lathos sta orismata
+       return -1;//invalid arguments
     }
-    //Elegxos an uparxoun ta sxeseis.pedia pou mas dinontai
+    //Check if the given relation.fields exist
     for(i=3+shift;i<2*N+3+shift;i+=2){
         sprintf(name,"%s.%s",argv[i],argv[i+1]);
         if((scanDesc=HF_OpenFileScan(attrfileDesc,sizeof(attrDesc),'c',MAXNAME,MAXNAME,1,name))<0){
@@ -1690,29 +1690,29 @@ int DM_pipeline(int argc,char *argv[]){
         }
         if(HF_FindNextRec(scanDesc,(char *)&aD1)<0){
            HF_PrintError("Invalid relation.attribute to project : ");
-           return -1;//To pedio den uparxei                                            
+           return -1;//The field does not exist                                            
         }
         if(HF_CloseFileScan(scanDesc)!=HFE_OK){
            HF_PrintError("");
-           return -1;//Lathos sto kleisimo ths sarwshs                                            
+           return -1;//Error closing the scan                                            
         }
     }
-    //Elegxos uparkshs sxeshs pros epilogh
+    //Check if the selection relation exists
     if((scanDesc=HF_OpenFileScan(relfileDesc,sizeof(relDesc),'c',MAXNAME,0,1,argv[argc-9]))<0){
        HF_PrintError("");
        return -1;                                                                                
     }
     if(HF_FindNextRec(scanDesc,(char *)&rD)<0){
        HF_PrintError("Invalid relation to select : ");                              
-       return -1;//H sxesh epiloghs den uparxei                                           
+       return -1;//The selection relation does not exist                                           
     }
     if(HF_CloseFileScan(scanDesc)!=HFE_OK){
        HF_PrintError("");
-       return -1;//Lathos sto kleisimo ths sarwshs  
+       return -1;//Error closing the scan  
     }
-    //Ypologismos xwrhtikothtas block se eggrafes  
+    //Calculate block capacity in records
     capacity=BF_BLOCK_SIZE/(rD.relwidth);
-    //Elegxos uparkshs sxesh.pedio pros epilogh
+    //Check if the selection relation.field exists
     sprintf(name,"%s.%s",argv[argc-9],argv[argc-8]);//
     if((scanDesc5=HF_OpenFileScan(attrfileDesc,sizeof(attrDesc),'c',MAXNAME,MAXNAME,1,name))<0){
         HF_PrintError("");
@@ -1720,41 +1720,41 @@ int DM_pipeline(int argc,char *argv[]){
     }
     if(HF_FindNextRec(scanDesc5,(char *)&aD3)<0){
         HF_PrintError("Invalid relation.attribute to select with condition : ");
-        return -1;//To pedio den uparxei                                            
+        return -1;//The field does not exist                                            
     }
     if(HF_CloseFileScan(scanDesc5)!=HFE_OK){
        HF_PrintError("");
-       return -1;//Lathos sto kleisimo ths sarwshs  
+       return -1;//Error closing the scan  
     }
-    //Elegxos gia uparksh sxesewn pros zeuksh
-    //Sxesh 1
+    //Check if the relations to be joined exist
+    //Relation 1
     if((scanDesc1=HF_OpenFileScan(relfileDesc,sizeof(relDesc),'c',MAXNAME,0,1,argv[argc-5]))<0){
        HF_PrintError("");
        return -1;                                                                                
     }
     if(HF_FindNextRec(scanDesc1,(char *)&rD1)<0){
        HF_PrintError("Invalid relation to join : ");
-       return -1;//H sxesh den uparxei                                           
+       return -1;//The relation does not exist                                           
     }
     if(HF_CloseFileScan(scanDesc1)!=HFE_OK){
        HF_PrintError("");
-       return -1;//Lathos sto kleisimo ths sarwshs  
+       return -1;//Error closing the scan  
     }
-    //Sxesh 2
+    //Relation 2
     if((scanDesc2=HF_OpenFileScan(relfileDesc,sizeof(relDesc),'c',MAXNAME,0,1,argv[argc-2]))<0){
        HF_PrintError("");
        return -1;                                                                                
     }
     if(HF_FindNextRec(scanDesc2,(char *)&rD2)<0){
        HF_PrintError("Invalid relation to join : ");
-       return -1;//H sxesh den uparxei                                           
+       return -1;//The relation does not exist                                           
     }
     if(HF_CloseFileScan(scanDesc2)!=HFE_OK){
       HF_PrintError("");
-      return -1;//Lathos sto kleisimo ths sarwshs  
+      return -1;//Error closing the scan  
     }
-    //Elegxos gia uparksh sxesewn.pediwn pros zeuksh
-    //Prwth sxesh.pedio
+    //Check if the relation.fields to be joined exist
+    //First relation.field
     sprintf(name,"%s.%s",argv[argc-5],argv[argc-4]);//
     if((scanDesc3=HF_OpenFileScan(attrfileDesc,sizeof(attrDesc),'c',MAXNAME,MAXNAME,1,name))<0){
         HF_PrintError("");
@@ -1762,13 +1762,13 @@ int DM_pipeline(int argc,char *argv[]){
     }
     if(HF_FindNextRec(scanDesc3,(char *)&aD1)<0){
        HF_PrintError("Invalid relation.attribute to join : ");
-       return -1;//To pedio den uparxei                                            
+       return -1;//The field does not exist                                            
     }
     if(HF_CloseFileScan(scanDesc3)!=HFE_OK){
        HF_PrintError("");
-       return -1;//Lathos sto kleisimo ths sarwshs  
+       return -1;//Error closing the scan  
     }
-    //Deuterh sxesh.pedio
+    //Second relation.field
     sprintf(name,"%s.%s",argv[argc-2],argv[argc-1]);//
     if((scanDesc4=HF_OpenFileScan(attrfileDesc,sizeof(attrDesc),'c',MAXNAME,MAXNAME,1,name))<0){
         HF_PrintError("");
@@ -1776,23 +1776,23 @@ int DM_pipeline(int argc,char *argv[]){
     }
     if(HF_FindNextRec(scanDesc4,(char *)&aD2)<0){
        HF_PrintError("Invalid relation.attribute to join : ");
-       return -1;//To pedio den uparxei                                            
+       return -1;//The field does not exist                                            
     }
     if(HF_CloseFileScan(scanDesc4)!=HFE_OK){
        HF_PrintError("");
-       return -1;//Lathos sto kleisimo ths sarwshs  
-    }//Elegxos an h prwth sxesh pros zeuksh einai idia me thn sxesh pros epilogh
+       return -1;//Error closing the scan  
+    }//Check if the first join relation is the same as the selection relation
     if(strcmp(argv[argc-9],argv[argc-5])!=0){
        printf("Relation to select differs from the one to join");
-       return -1;//Lathos orismata , h sxesh epiloghs den einai idia me thn prwth sxesh gia zeuksh                                         
+       return -1;//Invalid arguments, the selection relation is not the same as the first join relation                                         
     }
-    //Telos elegxwn
+    //End of checks
     
-    //Tha kanoume select - Gemizoume to block
-    //Anoigma ths sxeshs
+    //We will perform select - Fill the block
+    //Open the relation
     if((fileDesc=HF_OpenFile(argv[argc-9]))<0){
        HF_PrintError("");
-       return -1;//Lathos sto anoigma ths sxeshs
+       return -1;//Error opening the relation
     }
     
     memcpy(&attrlength,&(aD3.attrlength),sizeof(int));
@@ -1816,21 +1816,21 @@ int DM_pipeline(int argc,char *argv[]){
     } 
     op2=operand(argv[argc-3]);
     
-    //Anoigma sarwshs me ta katallhla orismata gia na mas epistrepsei oles tis eggrafes ths sxeshs pou dhlwnei to TARGET_LIST
-    //kai ikanopoioun thn sunthikh condition
-    //An h sxesh.pedio den exei eurethrio
+    //Open scan with appropriate arguments to return all records of the relation specified in TARGET_LIST
+    //that satisfy the condition
+    //If the relation.field has no index
     if(indexed==0){
        if((scanDesc6=HF_OpenFileScan(fileDesc,rD.relwidth,attrtype,attrlength,offset,op,value))<0){
            HF_PrintError("");
            return -1;                                                                                
        }
     }
-    else{//An h sxesh.pedio exei eurethrio
-         //Anoigma ths sxeshs epiloghs
+    else{//If the relation.field has an index
+         //Open the selection relation
          sprintf(name,"%s.%d",argv[argc-9],aD3.indexno);
          if((fileDesc1=BF_OpenFile(name))<0){//
              BF_PrintError("");
-             return -1;//Lathos sto anoigma ths sxeshs
+             return -1;//Error opening the relation
          }  
          if((scanDesc6=AM_OpenIndexScan(fileDesc1,attrtype,attrlength,op,value))<0){
              AM_PrintError("");
@@ -1841,18 +1841,18 @@ int DM_pipeline(int argc,char *argv[]){
     if(aD2.indexed==0){
       if((fileDesc2=HF_OpenFile(argv[argc-2]))<0){
           HF_PrintError("");
-          return -1;//Lathos sto anoigma ths sxeshs
+          return -1;//Error opening the relation
       }      
     }
     else{
        sprintf(name,"%s.%d",argv[argc-2],aD2.indexno);  
        if((fileDesc2=BF_OpenFile(name))<0){
            BF_PrintError("");
-           return -1;//Lathos sto anoigma ths sxeshs
+           return -1;//Error opening the relation
        }
        if((fileDesc4=HF_OpenFile(argv[argc-2]))<0){
            HF_PrintError("");
-           return -1;//Lathos sto anoigma ths sxeshs
+           return -1;//Error opening the relation
       }  
     }
     if((s2=malloc(rD2.relwidth))==NULL){
@@ -1868,12 +1868,12 @@ int DM_pipeline(int argc,char *argv[]){
         printf("|%-27s",name);   
     }
     printf("|\n");
-    //Algorithmos emfwliasmenwn brogxwn
+    //Nested loops algorithm
     while(1){
       if((s=malloc(rD.relwidth))==NULL){
           return -1;
       }
-      //an i sxesh epiloghs den exei eurethrio
+      //if the selection relation has no index
       if(indexed==0){
          if(HF_FindNextRec(scanDesc6,s)<0){
             flag=1;
@@ -1883,7 +1883,7 @@ int DM_pipeline(int argc,char *argv[]){
              offset+=(rD.relwidth);
          }  
       }
-      //an i sxesh epiloghs exei eurethrio
+      //if the selection relation has an index
       else{
          if((recId=AM_FindNextEntry(scanDesc6))<0){
             flag=1;
@@ -1891,21 +1891,21 @@ int DM_pipeline(int argc,char *argv[]){
          else{
             if(HF_GetThisRec(fileDesc,recId,s,rD.relwidth)!=HFE_OK){
                HF_PrintError("");
-               return -1;//To eurethrio den sumfwnei me to swro kserw gw!!!!                                                          
+               return -1;//The index does not match the heap file!                                                          
             }
             memcpy(buffer+offset,s,rD.relwidth);
             offset+=(rD.relwidth);
          }
       }
       free(s);
-      //exei gemisei to block i teleiwsan oi eggrafes tou arxeiou
+      //the block is full or the file records are exhausted
       if(offset+(rD.relwidth)>BF_BLOCK_SIZE || flag==1){
-         //an teleiwsan oi eggrafes tou arxeiou allazw thn capacity
+         //if the file records are exhausted, adjust the capacity
          if(flag==1){
             capacity=offset/(rD.relwidth);            
          }
          offset=0;
-         //an i eswterikh sxesh zeuksis exei eurethrio
+         //if the inner join relation has an index
          if(aD2.indexed==1){
             counter=0;
             while(counter<capacity){                                
@@ -1936,7 +1936,7 @@ int DM_pipeline(int argc,char *argv[]){
                     }
                     if(HF_FindNextRec(scanDesc9,(char *)&aD4)<0){
                        HF_PrintError("");
-                       return -1;//To pedio den uparxei                                            
+                       return -1;//The field does not exist                                            
                     }
                     if(i==3+shift){
                        printf("|");
@@ -1966,9 +1966,9 @@ int DM_pipeline(int argc,char *argv[]){
                     }
                     if(HF_CloseFileScan(scanDesc9)!=HFE_OK){
                        HF_PrintError("");
-                       return -1;//Lathos sto kleisimo ths sarwshs                                            
+                       return -1;//Error closing the scan                                            
                     }
-                  }//An exw proswrino pinaka (INTO)
+                  }//If we have a temporary table (INTO)
                   if(intoflag==1){
                      if(DM_insert(insertargc,insertargv)<0){
                         return -1;                                      
@@ -1980,11 +1980,11 @@ int DM_pipeline(int argc,char *argv[]){
                 offset+=(rD.relwidth);                     
                 if(AM_CloseIndexScan(scanDesc8)!=AME_OK){
                    AM_PrintError("");
-                   return -1;//Lathos sto kleisimo ths sarwshs                                            
+                   return -1;//Error closing the scan                                            
                 }
             }                
          }                               
-         //an i eswterikh sxesh zeuksis den exei eurethrio
+         //if the inner join relation has no index
          else{
               counter=0;
               if((scanDesc7=HF_OpenFileScan(fileDesc2,rD2.relwidth,'c',MAXNAME,MAXNAME,1,NULL))<0){
@@ -2044,7 +2044,7 @@ int DM_pipeline(int argc,char *argv[]){
                          }
                          if(HF_FindNextRec(scanDesc9,(char *)&aD4)<0){
                             HF_PrintError("");
-                            return -1;//To pedio den uparxei                                            
+                            return -1;//The field does not exist                                            
                          }
                          if(i==3+shift){
                             printf("|");
@@ -2074,9 +2074,9 @@ int DM_pipeline(int argc,char *argv[]){
                          }
                          if(HF_CloseFileScan(scanDesc9)!=HFE_OK){
                             HF_PrintError("");
-                            return -1;//Lathos sto kleisimo ths sarwshs                                            
+                            return -1;//Error closing the scan                                            
                          }
-                        }//An exw proswrino pinaka (INTO)
+                        }//If we have a temporary table (INTO)
                         if(intoflag==1){
                            if(DM_insert(insertargc,insertargv)<0){
                               return -1;                                      
@@ -2092,7 +2092,7 @@ int DM_pipeline(int argc,char *argv[]){
               }        
               if(HF_CloseFileScan(scanDesc7)!=HFE_OK){
                  HF_PrintError("");
-                 return -1;//Lathos sto kleisimo ths sarwshs                                            
+                 return -1;//Error closing the scan                                            
               }       
          }
          offset=0;
@@ -2112,42 +2112,42 @@ int DM_pipeline(int argc,char *argv[]){
         printf("\n%d recs were successfully selected and joined with function pipeline\n",sunolo);
     }
     free(s2);
-    //Kleisimo sarwsewn kai sxesewn
+    //Close scans and relations
     if(aD2.indexed==0){   
        if(HF_CloseFile(fileDesc2)!=HFE_OK){
           HF_PrintError("");
-          return -1;//Lathos sto kleisimo ths sarwshs                                            
+          return -1;//Error closing the scan                                            
        }
     }
     else{
        if(BF_CloseFile(fileDesc2)!=BFE_OK){
           BF_PrintError("");
-          return -1;//Lathos sto kleisimo ths sarwshs                                            
+          return -1;//Error closing the scan                                            
        } 
        if(HF_CloseFile(fileDesc4)!=HFE_OK){
           HF_PrintError("");
-          return -1;//Lathos sto anoigma ths sxeshs
+          return -1;//Error opening the relation
        }  
     }
     if(indexed==0){   
        if(HF_CloseFileScan(scanDesc6)!=HFE_OK){
           HF_PrintError("");
-          return -1;//Lathos sto kleisimo ths sarwshs                                            
+          return -1;//Error closing the scan                                            
        }
     }
     else{
        if(AM_CloseIndexScan(scanDesc6)!=AME_OK){
           AM_PrintError("");
-          return -1;//Lathos sto kleisimo ths sarwshs                                            
+          return -1;//Error closing the scan                                            
        } 
        if(BF_CloseFile(fileDesc1)!=BFE_OK){
           BF_PrintError("");
-          return -1;//Lathos sto anoigma ths sxeshs
+          return -1;//Error opening the relation
        }  
     }
     if(HF_CloseFile(fileDesc)!=HFE_OK){
        HF_PrintError("");
-       return -1;//Lathos sto anoigma ths sxeshs
+       return -1;//Error opening the relation
     }
     free(value);                
     if(intoflag==1){
@@ -2158,4 +2158,4 @@ int DM_pipeline(int argc,char *argv[]){
     }
     return 0;
 }
-//THE END:)
+//THE END

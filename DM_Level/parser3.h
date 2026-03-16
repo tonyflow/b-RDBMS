@@ -15,32 +15,32 @@ typedef struct {
 	char type;
 } NOI;
 
-//orismos synarthseon
+//function declarations
 int yyparse(void);
 
 
-//global metablhtes
+//global variables
 int relfd,attrfd,viewfd,viewattrfd;
 
 
 
 
 typedef struct {
-	char relname[MAXNAME];	/* όνομα πίνακα */
-	int relwidth;		/* εύρος εγγραφής πίνακα σε bytes */
-	int attrcnt;		/* αριθμός πεδίων εγγραφής */
-	int indexcnt;		/* αριθμός ευρετηρίων πίνακα */
+	char relname[MAXNAME];	/* table name */
+	int relwidth;		/* record width of table in bytes */
+	int attrcnt;		/* number of record fields */
+	int indexcnt;		/* number of table indexes */
 	} relDesc; 
 
 
 typedef struct {
-	char relname[MAXNAME];	/* όνομα πίνακα */
-	char attrname[MAXNAME];	/* όνομα πεδίου του πίνακα */
-	int offset;		/* απόσταση αρχής πεδίου από την αρχή της εγγραφής σε bytes */
-	int attrlength;		/* μήκος πεδίου σε bytes */
-	char attrtype;		/* τύπος πεδίου ('i', 'f', ή 'c' */
-	int indexed;		/* TRUE αν το πεδίο έχει ευρετήριο */
-	int indexno;		/* αύξον αριθμός του ευρετηρίου αν indexed=TRUE */
+	char relname[MAXNAME];	/* table name */
+	char attrname[MAXNAME];	/* field name of the table */
+	int offset;		/* distance of field start from the beginning of the record in bytes */
+	int attrlength;		/* field length in bytes */
+	char attrtype;		/* field type ('i', 'f', or 'c' */
+	int indexed;		/* TRUE if the field has an index */
+	int indexno;		/* sequential number of the index if indexed=TRUE */
 	} attrDesc; 
 
 typedef struct {

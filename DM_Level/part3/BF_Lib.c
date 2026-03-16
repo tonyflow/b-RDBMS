@@ -2,19 +2,19 @@
 #include <string.h>
 #include <stdlib.h>
 #include "BF_Lib.h"
-//Synarthseis HD epipedou
+//HD level functions
 int HD_exist(char *filename){
     
     FILE *fp;
     
     if ((fp=(fopen(filename,"rb")))==NULL){
        BF_errno=-6;
-       return BF_errno;//Den uparxei
-    }   
+       return BF_errno;//Does not exist
+    }
     else{
          fclose(fp);
          BF_errno=0;
-         return 1;//Yparxei
+         return 1;//Exists
          }
 }
 int HD_create(char *filename)
@@ -23,56 +23,56 @@ int HD_create(char *filename)
     
     if ((fp=(fopen(filename,"wb")))==NULL){
        BF_errno=-6;
-       return BF_errno;//Apetixe i fopen
-    }   
+       return BF_errno;//fopen failed
+    }
     else{
          fclose(fp);
          BF_errno=0;
-         return 1;//Epityxia
+         return 1;//Success
    }
 }
 int HD_remove(char *filename){
     if(HD_exist(filename)<0){
          BF_errno=-18;
-         return BF_errno;//To arxeio den iparxei
+         return BF_errno;//The file does not exist
     }
     if(remove(filename)!=0){
          BF_errno=-6;
-         return BF_errno;//Error kata tin diagrafi tou arxeiou
+         return BF_errno;//Error during file deletion
     }
     BF_errno=0;
-    return 0;//Epityxia
+    return 0;//Success
 }
 
-//Synarthsh epeksergasias tou pinaka bitmap.Sygkekrimena bazei 1 sth thesh tou pinaka  pou antistoixei to block 
-//tou arxeiou me arithmo num_of_block.Kanei dhladh valid to block. 
+//Bitmap manipulation function. Sets to 1 the position in the table corresponding to the block
+//of the file with number num_of_block. In other words, marks the block as valid.
 void make_valid(char *bitmap,int num_of_block){
       int i,j;
-     
-     i=num_of_block%8;//Briskoume th thesh tou pinaka (kathe thesh einai 1 byte) pou periexei to bit pou antistoixei sto block tou arxeiou
-     j=num_of_block/8;//Mesa sto keli epilegw to katallhlo bit pou antistoixei sto block tou arxeiou
-     bitmap[j]=bitmap[j]|m_table[i];//Me th bohtheia ths antistoixhs maskas kanw bitwise-or kai metatrepw to 0 se 1
+
+     i=num_of_block%8;//Find the table position (each position is 1 byte) containing the bit corresponding to the file block
+     j=num_of_block/8;//Within the cell, select the appropriate bit corresponding to the file block
+     bitmap[j]=bitmap[j]|m_table[i];//Using the corresponding mask, perform bitwise-or to change 0 to 1
 }
-//Synarthsh epeksergasias tou pinaka bitmap.Sygkekrimena bazei 0 sth thesh tou pinaka  pou antistoixei to block 
-//tou arxeiou me arithmo num_of_block.Kanei dhladh invalid to block. 
+//Bitmap manipulation function. Sets to 0 the position in the table corresponding to the block
+//of the file with number num_of_block. In other words, marks the block as invalid.
 void make_invalid(char *bitmap,int num_of_block){
      int i,j;
-     
-     i=num_of_block%8;//Briskoume th thesh tou pinaka (kathe thesh einai 1 byte) pou periexei to bit pou antistoixei sto block tou arxeiou
-     j=num_of_block/8;//Mesa sto keli epilegw to katallhlo bit pou antistoixei sto block tou arxeiou
-     bitmap[j]=bitmap[j]&~m_table[i];//Me th bohtheia ths antistoixhs maskas kanw bitwise-and kai metatrepw to 1 se 0
+
+     i=num_of_block%8;//Find the table position (each position is 1 byte) containing the bit corresponding to the file block
+     j=num_of_block/8;//Within the cell, select the appropriate bit corresponding to the file block
+     bitmap[j]=bitmap[j]&~m_table[i];//Using the corresponding mask, perform bitwise-and to change 1 to 0
 }
-//Synarthsh epeksergasias tou pinaka bitmap.Sygkekrimena elegxei an h thesh pou antistoixei sto block tou arxeiou me 
-//arithmo num_of_block einai valid h invalid
+//Bitmap manipulation function. Checks whether the position corresponding to the block of the file with
+//number num_of_block is valid or invalid.
 int is_valid(char *bitmap,int num_of_block){
      int i,j;
-     
-     i=num_of_block%8;//Briskoume th thesh tou pinaka (kathe thesh einai 1 byte) pou periexei to bit pou antistoixei sto block tou arxeiou
-     j=num_of_block/8;//Mesa sto keli epilegw to katallhlo bit pou antistoixei sto block tou arxeiou
-     if((bitmap[j]&m_table[i])!=0){ //An to apotelesma tou bitwise-and me thn katallhlh maska einai diaforo tou mhdenos tote
-          return 1;//to block einai valid
+
+     i=num_of_block%8;//Find the table position (each position is 1 byte) containing the bit corresponding to the file block
+     j=num_of_block/8;//Within the cell, select the appropriate bit corresponding to the file block
+     if((bitmap[j]&m_table[i])!=0){ //If the result of bitwise-and with the appropriate mask is non-zero then
+          return 1;//the block is valid
      }
-     return 0;//alliws to block einai invalid
+     return 0;//otherwise the block is invalid
 }
 void BF_Init(void){
     int i,j;
@@ -107,10 +107,10 @@ int BF_CreateFile(char *filename){
     header *headerptr;
     int i;
     
-    //Elegxoi
+    //Checks
     if (HD_exist(filename)>0){
        BF_errno=-19;
-       return BF_errno;//error -> to arxeio yparxei hdh
+       return BF_errno;//error -> the file already exists
      }
     if (HD_create(filename)<0){
        BF_errno=-6;
@@ -118,45 +118,45 @@ int BF_CreateFile(char *filename){
     }
     if((fp=fopen(filename,"rb+"))==NULL){
        BF_errno=-6;
-       return BF_errno;//error sto anoigma tou arxeiou
+       return BF_errno;//error opening the file
        }
-    //Desmeush mnhmhs gia to header enos arxeiou
+    //Memory allocation for the file header
     if((headerptr=malloc(sizeof(header)))==NULL){
        BF_errno=-1;
-       return BF_errno;//error -> h mnhmh einai gemati
+       return BF_errno;//error -> memory is full
        }
-    //Antigrafh tou onomatos tou arxeiou sthn kefalida tou 
+    //Copy the file name to its header
     strcpy(headerptr->fname,filename);
-    //Arxikopoihsh stoixeiwn pou periexei to arxeio kefalida
+    //Initialize the elements contained in the file header
     headerptr->num_of_blocks=0;
     for( i=0; i<970; i++ ){
          (headerptr->bitmaptable[i])=0;
     }
-    //Metaferw to deikth tou arxeiou sthn arxh tou
+    //Move the file pointer to the beginning
     if((fseek(fp,0,SEEK_SET))!=0){
         BF_errno=-6;
-        return BF_errno;//error sthn fseek
+        return BF_errno;//error in fseek
     }
-    //Grafw sto arxeio thn kefalida tou
+    //Write the header to the file
     fwrite(headerptr,BF_BLOCK_SIZE,1,fp);
-    fclose(fp);//Kleinw to arxeio
-    free(headerptr);//Eleutherwn th mnhmh pou eixa desmeusei gia to deikth
+    fclose(fp);//Close the file
+    free(headerptr);//Free the memory allocated for the pointer
     BF_errno=0;
-    return BF_errno;//Epityxia
+    return BF_errno;//Success
 }
 int BF_OpenFile(char *filename){
     int i,j,freeNum=-1,samefileNum;
-    //To arxeio yparxei ston pinaka anoiktwn arxeiwn   
+    //The file exists in the open files table
     for(i=0;i<MAXOPENFILES;i++){
-             if(of_table[i].isfree==0){//An h thesh einai adeia thn krataw 
+             if(of_table[i].isfree==0){//If the slot is empty, keep it
                  freeNum=i;
              }
-             else{//Alliws elegxw an to arxeio einai hdh anoikto se auth th thesh
+             else{//Otherwise check if the file is already open in this slot
                if(strcmp(of_table[i].header_ptr->fname,filename)==0){
-                 BF_errno=-12;                                        
-                 samefileNum=i;//Brhka th thesh tou anoiktou arxeiou ston pinaka anoiktwn arxeiwn
-                 if(freeNum<0){//An den exw brei kenh thesh ws tote
-                      for(j=i;j<MAXOPENFILES;j++){//Psaxnw mexri to telos tou pinaka mexri na brw thn prwth eleutherh thesh kai stamataw
+                 BF_errno=-12;
+                 samefileNum=i;//Found the position of the open file in the open files table
+                 if(freeNum<0){//If no empty slot has been found so far
+                      for(j=i;j<MAXOPENFILES;j++){//Search until the end of the table to find the first free slot and stop
                           if(of_table[j].isfree==0){
                                 freeNum=j;
                                 break;
@@ -164,30 +164,30 @@ int BF_OpenFile(char *filename){
                       }
                       if(freeNum==-1){
                            BF_errno=-13;
-                           return BF_errno;//O pinakas anoiktwn arxeiwn einai gematos
+                           return BF_errno;//The open files table is full
                       }
-                 //Se auto shmeio exw brei se poia thesh tou pinaka brisketai to anoikto arxeio 
-                 //kathws kai mia kenh thesh ston pinaka.     
-                 }//Antigrafw apo th mia thesh sthn allh ta stoixeia 
+                 //At this point we have found the position in the table where the open file is located
+                 //as well as an empty slot in the table.
+                 }//Copy the data from one slot to the other
                  of_table[freeNum].isfree=1;
                  if((of_table[freeNum].fp=fopen(filename,"rb+"))==NULL){
                       BF_errno=-6;
-                      return BF_errno;//error sto anoigma tou arxeiou
+                      return BF_errno;//error opening the file
                  }
                  of_table[freeNum].header_ptr=of_table[samefileNum].header_ptr;
                  (of_table[freeNum].header_ptr->openedNum)++;
-                 return freeNum;//Epityxia me to anoigma tou arxeiou -> Epistrefw to fileDesc
+                 return freeNum;//Success opening the file -> return the fileDesc
                }
              }
     }                       
     if(HD_exist(filename)<0){
        BF_errno=-18;
-       return BF_errno;//Error -> To arxeio den yparxei
+       return BF_errno;//Error -> The file does not exist
     }
-    //To arxeio den yparxei ston pinaka anoiktwn arxeiwn
+    //The file does not exist in the open files table
     for(i=0;i<MAXOPENFILES;i++){
-                   if((of_table[i].isfree)==0){//Briskw thn prwth kenh thesh
-                      //Desmeuw mnhmh gia tous deiktes , dinw timh sto deikth tou arxeiou kai kanw tis enhmerwseis pou xreiazontai
+                   if((of_table[i].isfree)==0){//Find the first empty slot
+                      //Allocate memory for the pointers, assign the file pointer value and perform necessary updates
                       of_table[i].isfree=1;
                       of_table[i].fp=fopen(filename,"rb+");
                       of_table[i].header_ptr=malloc(sizeof(h_struct));
@@ -196,29 +196,29 @@ int BF_OpenFile(char *filename){
                       strcpy(of_table[i].header_ptr->fname,filename);
                       if((fseek(of_table[i].fp,0,SEEK_SET))!=0){
                          BF_errno=-6;
-                         return BF_errno;//Error sthn fseek
+                         return BF_errno;//Error in fseek
                       }
                       fread(of_table[i].header_ptr->ofhead,BF_BLOCK_SIZE,1,of_table[i].fp);
-                      return i;//Epityxia me to grapsimo tou arxeiou ston pinaka -> Epistrefw to fileDesc
+                      return i;//Success writing the file to the table -> return the fileDesc
                    }
     }
-    //An h timh ths meinei 0 dhladh an den mpei pote mesa sto parapanw if
+    //If the value remains 0, meaning it never entered the above if
     BF_errno=-13;
-    return BF_errno;//Error -> O pinakas anoiktwn arxeiwn einai gematos
+    return BF_errno;//Error -> The open files table is full
 }
 int BF_DestroyFile(char *filename){
     int i;
     
     if(HD_exist(filename)<0){
           BF_errno=-18;
-       return BF_errno;//Error -> To arxeio den yparxei
+       return BF_errno;//Error -> The file does not exist
     }
     for(i=0;i<MAXOPENFILES;i++){
         if(of_table[i].isfree==1 && strcmp(of_table[i].header_ptr->fname,filename)==0){
                  BF_errno=-12;
-                 return BF_errno;//Error -> To arxeio einai anoikto
+                 return BF_errno;//Error -> The file is open
         }
-    }//An den yparxei to arxeio ston pinaka twn anoiktwn arxeiwn tote to kanoume remove
+    }//If the file does not exist in the open files table then we remove it
     BF_errno=HD_remove(filename);
     return BF_errno;
 }
@@ -228,54 +228,54 @@ int BF_CloseFile(int fileDesc){
     
     if(of_table[i].isfree==0){
           BF_errno=-14;
-          return BF_errno;//Error -> Lathos fileDesc
+          return BF_errno;//Error -> Invalid fileDesc
     }
     for(j=0;j<BF_BUFFER_SIZE;j++){
         if(of_table[i].pinned_table[j]!=0){
               BF_errno=-3;
-              return BF_errno;//Error -> Kapoio block tou arxeiou einai karfitswmeno sth mnhmh
+              return BF_errno;//Error -> A block of the file is pinned in memory
         }
     }
-    //An to arxeio einai anoikto panw apo mia fores
+    //If the file is open more than once
     if(of_table[i].header_ptr->openedNum>1){
        (of_table[i].header_ptr->openedNum)--;
        of_table[i].header_ptr=NULL;
        of_table[i].isfree=0;
        fclose(of_table[i].fp);
        BF_errno=0;
-       return BF_errno;//Epityxia 
-    }//An kapoia blocks tou arxeiou einai dirty sth mnhmh ta grafoume sto disko prin kleisoume to arxeio
+       return BF_errno;//Success
+    }//If some blocks of the file are dirty in memory, write them to disk before closing the file
     for(j=0;j<BF_BUFFER_SIZE;j++){
         if(strcmp(buffer[j].fname,of_table[i].header_ptr->fname)==0){
            if(buffer[j].isdirty==TRUE){
               if((fseek(of_table[i].fp,(buffer[j].blockNum)*BF_BLOCK_SIZE,SEEK_SET))!=0){
                BF_errno=-6;
-               return BF_errno;//lathos sthn fseek
+               return BF_errno;//error in fseek
               }
               fwrite(buffer[j].data,BF_BLOCK_SIZE,1,of_table[i].fp);
            }
            buffer[j].isfree=0;
            buffer[j].isdirty=FALSE;
         }
-    }//An to arxeio einai anoikto mia mono fora
+    }//If the file is open only once
     free(of_table[i].header_ptr->ofhead);
     free(of_table[i].header_ptr);
     of_table[i].isfree=0;
     fclose(of_table[i].fp);
     BF_errno=0;
-    return BF_errno;//Epityxia
+    return BF_errno;//Success
 }
 int BF_GetThisBlock(int fileDesc,int blockNum,char **blockbuf){
     int i,j,fbn=-1,min;
     if(of_table[fileDesc].isfree==0){
        BF_errno=-14;
-       return BF_errno;//Error -> Lathos fileDesc 
+       return BF_errno;//Error -> Invalid fileDesc
     }
     if(is_valid(of_table[fileDesc].header_ptr->ofhead->bitmaptable,blockNum)==0){
            BF_errno=-11;
-           return BF_errno;;//Error -> To block me arithmo blockNum den einai valid 
+           return BF_errno;;//Error -> The block with number blockNum is not valid
     }
-    //Koitaw an yparxei to block sthn endiamesh mnhmh,an yparxei kanw tis enhmerwseis pou xreiazontai
+    //Check if the block exists in the buffer; if it does, perform the necessary updates
     for(i=0;i<BF_BUFFER_SIZE;i++){
        if((strcmp(buffer[i].fname,of_table[fileDesc].header_ptr->fname)==0)&& buffer[i].blockNum==(blockNum+1) && buffer[i].isfree==1 ){
           buffer[i].fpinned_table[fileDesc]+=1;
@@ -289,19 +289,19 @@ int BF_GetThisBlock(int fileDesc,int blockNum,char **blockbuf){
           }
           *blockbuf=buffer[i].data;  
           BF_errno=0;
-          return BF_errno;//Epityxia
+          return BF_errno;//Success
        }
     }
-    //Den yparxei to block sthn endiamesh mnhmh
-    //Briskw xwro sthn endiamesh mnhmh 
+    //The block does not exist in the buffer
+    //Find space in the buffer
     for(j=0;j<BF_BUFFER_SIZE;j++){
         if(buffer[j].isfree==0){
-           fbn=j;//Brhka thn prwth eleutherh thesh sth mnhmh
-           break;                  
+           fbn=j;//Found the first free slot in the buffer
+           break;
         }
-    }//An den yparxei eleutherh thesh sth mnhmh xrhsimopoiw LRU
-    //O LRU douleuei ws ekshs:Kathe fora pou ginetai mia energeia se ena block auksanetai h global metablhth time pou ekxwreitai sth
-    //lastAccess.To block me th mikroterh timh lastAccess ,to opoio den einai karfwmeno sth mnhmh, einai to ypopshfio gia antikatastash
+    }//If there is no free slot in the buffer, use LRU
+    //LRU works as follows: Each time an operation is performed on a block, the global variable Time is incremented and assigned to
+    //lastAccess. The block with the smallest lastAccess value, which is not pinned in memory, is the candidate for replacement
     if(fbn<0){
        min=10000000;
        for(j=0;j<BF_BUFFER_SIZE;j++){
@@ -312,22 +312,22 @@ int BF_GetThisBlock(int fileDesc,int blockNum,char **blockbuf){
        }
        if(fbn<0){
           BF_errno=-2;
-          return BF_errno;//Error -> Ola ta blocks einai pinned , den leitourgei o LRU
-       }//Se periptwsh pou to block pros antikatastash einai disty enhmerwnw to periexomeno tou sto disko
+          return BF_errno;//Error -> All blocks are pinned, LRU cannot work
+       }//If the block to be replaced is dirty, write its contents to disk
        if(buffer[fbn].isdirty==TRUE){
           for(i=0;i<MAXOPENFILES;i++){
-            if(strcmp(buffer[fbn].fname,of_table[i].header_ptr->fname)==0){                     
+            if(strcmp(buffer[fbn].fname,of_table[i].header_ptr->fname)==0){
                break;
-            }                
+            }
           }
           if((fseek(of_table[i].fp,(buffer[fbn].blockNum)*BF_BLOCK_SIZE,SEEK_SET))!=0){
               BF_errno=-6;
-              return BF_errno;//Error sthn fseek
+              return BF_errno;//Error in fseek
           }
           fwrite(buffer[fbn].data,BF_BLOCK_SIZE,1,of_table[i].fp);
        }
     }
-    //Fernoume to block sth mnhmh,kanoume tis enhmerwseis
+    //Bring the block into memory, perform updates
     buffer[fbn].isfree=1;
     strcpy(buffer[fbn].fname,of_table[fileDesc].header_ptr->fname);
     buffer[fbn].blockNum=blockNum+1;
@@ -337,14 +337,14 @@ int BF_GetThisBlock(int fileDesc,int blockNum,char **blockbuf){
     buffer[fbn].lastAccess=++Time;
     if((fseek(of_table[fileDesc].fp,(blockNum+1)*BF_BLOCK_SIZE,SEEK_SET))!=0){
 	   BF_errno=-6;
-       return BF_errno;//Error stin fseek
+       return BF_errno;//Error in fseek
     }
     fread(buffer[fbn].data,BF_BLOCK_SIZE,1,of_table[fileDesc].fp);
     if((fseek(of_table[fileDesc].fp,0,SEEK_SET))!=0){
        BF_errno=-6;
-       return BF_errno;//Error stin fseek
+       return BF_errno;//Error in fseek
     }
-    //Enhmerwnw to pinned_table
+    //Update the pinned_table
     for(j=0;j<BF_BUFFER_SIZE;j++){
         if(of_table[fileDesc].pinned_table[j]==0){
            of_table[fileDesc].pinned_table[j]=blockNum+1;
@@ -353,28 +353,28 @@ int BF_GetThisBlock(int fileDesc,int blockNum,char **blockbuf){
     }
     *blockbuf=buffer[fbn].data;
     BF_errno=0;
-    return BF_errno;//Epityxia
+    return BF_errno;//Success
 }
 int BF_AllocBlock(int fileDesc,int *blockNum,char **blockbuf){
     int nobs,i,j,kenh_thesh=-1,fbn=-1,min;
     char data[BF_BLOCK_SIZE];
     if(of_table[fileDesc].isfree==0){
        BF_errno=-14;
-       return BF_errno;//Error -> Lathos fileDesc 
+       return BF_errno;//Error -> Invalid fileDesc
     }
     nobs=of_table[fileDesc].header_ptr->ofhead->num_of_blocks;
     for(i=0;i<nobs;i++){
         if(is_valid(of_table[fileDesc].header_ptr->ofhead->bitmaptable,i)==0){
            kenh_thesh=i+1;
-           break;//Brhka to prwto adeio block sth thesh i
+           break;//Found the first empty block at position i
         }
     }
-    //Den yparxei adeio block sto arxeio
-    //Dhmiourgw neo block sto telos tou arxeiou
+    //There is no empty block in the file
+    //Create a new block at the end of the file
     if(kenh_thesh<0){
        if((fseek(of_table[fileDesc].fp,0,SEEK_END))!=0){
            BF_errno=-6;
-           return BF_errno;//Error stin fseek
+           return BF_errno;//Error in fseek
        }
        memset(data,0,BF_BLOCK_SIZE);
        fwrite(data,BF_BLOCK_SIZE,1,of_table[fileDesc].fp);
@@ -383,11 +383,11 @@ int BF_AllocBlock(int fileDesc,int *blockNum,char **blockbuf){
     }
     for(j=0;j<BF_BUFFER_SIZE;j++){
         if(buffer[j].isfree==0){
-           fbn=j;//Brhka thn prwth eleutherh thesh sth mnhmh
-           break;                  
+           fbn=j;//Found the first free slot in the buffer
+           break;
         }
     }
-    //An den yparxei eleutherh thesh sth mnhmh tote xrhsimopoiw ton LRU
+    //If there is no free slot in the buffer then use LRU
     if(fbn<0){
        min=10000000;
        for(j=0;j<BF_BUFFER_SIZE;j++){
@@ -398,8 +398,8 @@ int BF_AllocBlock(int fileDesc,int *blockNum,char **blockbuf){
        }
        if(fbn<0){
           BF_errno=-2;
-          return BF_errno;;///Error -> Ola ta blocks einai pinned , den leitourgei o LRU
-       }//Se periptwsh pou to block pros antikatastash einai disty enhmerwnw to periexomeno tou sto disko
+          return BF_errno;;///Error -> All blocks are pinned, LRU cannot work
+       }//If the block to be replaced is dirty, write its contents to disk
        if(buffer[fbn].isdirty==TRUE){
           for(i=0;i<MAXOPENFILES;i++){
             if(strcmp(buffer[fbn].fname,of_table[i].header_ptr->fname)==0){                     
@@ -408,12 +408,12 @@ int BF_AllocBlock(int fileDesc,int *blockNum,char **blockbuf){
           }
           if((fseek(of_table[i].fp,(buffer[fbn].blockNum)*BF_BLOCK_SIZE,SEEK_SET))!=0){
               BF_errno=-6;
-              return BF_errno;//Error sthn fseek
+              return BF_errno;//Error in fseek
           }
           fwrite(buffer[fbn].data,BF_BLOCK_SIZE,1,of_table[i].fp);
        }
     }
-    //Fernoume to block sth mnhmh,kanoume tis enhmerwseis
+    //Bring the block into memory, perform updates
     buffer[fbn].isfree=1;
     strcpy(buffer[fbn].fname,of_table[fileDesc].header_ptr->fname);
     buffer[fbn].blockNum=kenh_thesh;
@@ -423,20 +423,20 @@ int BF_AllocBlock(int fileDesc,int *blockNum,char **blockbuf){
     buffer[fbn].lastAccess=++Time;
     if((fseek(of_table[fileDesc].fp,kenh_thesh*BF_BLOCK_SIZE,SEEK_SET))!=0){
        BF_errno=-6;
-       return BF_errno;//Error sthn fseek
+       return BF_errno;//Error in fseek
     }
     fread(buffer[fbn].data,BF_BLOCK_SIZE,1,of_table[fileDesc].fp);
     of_table[fileDesc].header_ptr->ofhead->num_of_blocks=nobs;
     make_valid(of_table[fileDesc].header_ptr->ofhead->bitmaptable,kenh_thesh-1);
     if((fseek(of_table[fileDesc].fp,0,SEEK_SET))!=0){
 	   BF_errno=-6;
-       return BF_errno;//Error sthn fseek
+       return BF_errno;//Error in fseek
     }
     fwrite(of_table[fileDesc].header_ptr->ofhead,BF_BLOCK_SIZE,1,of_table[fileDesc].fp);
     if((fseek(of_table[fileDesc].fp,0,SEEK_SET))!=0){
        BF_errno=-6;
-       return BF_errno;//Error sthn fseek
-    }//Enhmerwnw to pinned_table
+       return BF_errno;//Error in fseek
+    }//Update the pinned_table
     for(j=0;j<BF_BUFFER_SIZE;j++){
         if(of_table[fileDesc].pinned_table[j]==0){
            of_table[fileDesc].pinned_table[j]=kenh_thesh;
@@ -446,50 +446,50 @@ int BF_AllocBlock(int fileDesc,int *blockNum,char **blockbuf){
     *blockNum=kenh_thesh-1;
     *blockbuf=buffer[fbn].data;
     BF_errno=0;
-    return BF_errno;//Epityxia  
+    return BF_errno;//Success  
 }
 int BF_GetFirstBlock(int fileDesc,int *blockNum,char **blockbuf){
     int nobs,i,NumBlock=-1;
     if(of_table[fileDesc].isfree==0){
        BF_errno=-14;
-       return BF_errno;//Error -> Lathos fileDesc 
+       return BF_errno;//Error -> Invalid fileDesc
     }
     nobs=of_table[fileDesc].header_ptr->ofhead->num_of_blocks;
     for(i=0;i<nobs;i++){
         if(is_valid(of_table[fileDesc].header_ptr->ofhead->bitmaptable,i)==1){
            NumBlock=i+1;
-           break;//Brhka to prwto valid block sth thesh i+1
+           break;//Found the first valid block at position i+1
         }
     }
-    //Den yparxei valid block sto arxeio
+    //There is no valid block in the file
     if(NumBlock<0){
        BF_errno=-11;
        return BF_errno;
     }
     *blockNum=NumBlock-1;
-    //Kalw thn BF_GetThisBlock me orisma to prwto valid block(an yparxei) pou exw brei
+    //Call BF_GetThisBlock with the first valid block (if it exists) that we found
     return BF_GetThisBlock(fileDesc,NumBlock-1,blockbuf);    
 }
 int BF_GetNextBlock(int fileDesc,int *blockNum,char **blockbuf){
     int nobs,i,NumBlock=-1;
     if(of_table[fileDesc].isfree==0){
        BF_errno=-14;
-       return BF_errno;//Error -> Lathos fileDesc 
+       return BF_errno;//Error -> Invalid fileDesc
     }
     nobs=of_table[fileDesc].header_ptr->ofhead->num_of_blocks;
     for(i=(*blockNum+1);i<nobs;i++){
         if(is_valid(of_table[fileDesc].header_ptr->ofhead->bitmaptable,i)==1){
            NumBlock=i+1;
-           break;//Brhka to prwto valid block , meta to dosmeno block , sth thesh i+1
+           break;//Found the first valid block, after the given block, at position i+1
         }
     }
-    //Den yparxei valid block sto arxeio meta to dosmeno block
+    //There is no valid block in the file after the given block
     if(NumBlock<0){
        BF_errno=-11;
        return BF_errno;;
     }
     *blockNum=NumBlock-1;
-    //Kalw thn BF_GetThisBlock me orisma to prwto valid block(an yparxei) , meta to dosmeno block , pou exw brei
+    //Call BF_GetThisBlock with the first valid block (if it exists), after the given block, that we found
     return BF_GetThisBlock(fileDesc,NumBlock-1,blockbuf);
 }
 int BF_DisposeBlock(int fileDesc,int *blockNum)
@@ -498,74 +498,74 @@ int BF_DisposeBlock(int fileDesc,int *blockNum)
 
     if(of_table[fileDesc].isfree==0){
        BF_errno=-14;
-       return BF_errno;//Error -> Lathos fileDesc 
+       return BF_errno;//Error -> Invalid fileDesc
     }
     if(is_valid(of_table[fileDesc].header_ptr->ofhead->bitmaptable,(*blockNum))==0){
        BF_errno=-11;
-       return BF_errno;//Error -> To block me arithmo blockNum den einai valid 
+       return BF_errno;//Error -> The block with number blockNum is not valid
     }
-    //Koitaw an to dosmeno block yparxei sth mnhmh
+    //Check if the given block exists in the buffer
     for(j=0;j<BF_BUFFER_SIZE;j++){
        if((strcmp(buffer[j].fname,of_table[fileDesc].header_ptr->fname)==0)&& buffer[j].blockNum==(*blockNum+1) && buffer[j].isfree==1){
               if(buffer[j].ispinned!=0){
               BF_errno=-3;
-              return BF_errno;//To block einai karfwmeno sthn endiamesh mnhmh
+              return BF_errno;//The block is pinned in the buffer
            }
-           buffer[j].isfree=0;//Alliws adeiazw th thesh sth mnhmh
+           buffer[j].isfree=0;//Otherwise free the slot in the buffer
 	       break;
        }
     }
-    //Kanw 0 th thesh tou block sto bitmap kai enhmerwnw to header tou arxeiou
+    //Set the block's bitmap position to 0 and update the file header
     make_invalid(of_table[fileDesc].header_ptr->ofhead->bitmaptable,*blockNum);
     if((fseek(of_table[fileDesc].fp,0,SEEK_SET))!=0){
             BF_errno=-6;
-            return BF_errno;//Error stin fseek
+            return BF_errno;//Error in fseek
     }
     fwrite(of_table[fileDesc].header_ptr->ofhead,BF_BLOCK_SIZE,1,of_table[fileDesc].fp);
     if((fseek(of_table[fileDesc].fp,0,SEEK_SET))!=0){
        BF_errno=-6;
-       return BF_errno;//Error stin fseek
+       return BF_errno;//Error in fseek
     }
     BF_errno=0;
-    return BF_errno;//Epityxia
+    return BF_errno;//Success
 }
 int BF_UnpinBlock(int fileDesc,int blockNum,int dirty){
     int j,thesh=-1;
     if(of_table[fileDesc].isfree==0){
        BF_errno=-14;
-       return BF_errno;//Error -> Lathos fileDesc 
+       return BF_errno;//Error -> Invalid fileDesc
     }
     if(is_valid(of_table[fileDesc].header_ptr->ofhead->bitmaptable,blockNum)==0){
        BF_errno=-11;
-       return BF_errno;//Error -> To block me arithmo blockNum den einai valid
+       return BF_errno;//Error -> The block with number blockNum is not valid
     }
-    for(j=0;j<BF_BUFFER_SIZE;j++){//Briskw apo poio arxeio proerxetai to dosmeno block
+    for(j=0;j<BF_BUFFER_SIZE;j++){//Find which file the given block belongs to
        if((strcmp(buffer[j].fname,of_table[fileDesc].header_ptr->fname)==0)&& buffer[j].blockNum==blockNum+1 && buffer[j].isfree==1){
            thesh=j;
            if(buffer[thesh].fpinned_table[fileDesc]==0){
               BF_errno=-14;
-              return BF_errno;//To block den exei ginei pinned apo to arxeio me anagnwristiko arithmo fileDesc
+              return BF_errno;//The block has not been pinned by the file with identifier fileDesc
            }
-           else{//Alliws kanw tis katallhles enhmerwseis
+           else{//Otherwise perform the appropriate updates
               (buffer[thesh].fpinned_table[fileDesc])--;
               (buffer[thesh].ispinned)--;
               buffer[thesh].lastAccess=++Time;
-              for(j=0;j<BF_BUFFER_SIZE;j++){//Sth thesh tou pinned_table pou briskotan to dosmeno block bazw 0 
+              for(j=0;j<BF_BUFFER_SIZE;j++){//Set the pinned_table position where the given block was to 0
                  if(of_table[fileDesc].pinned_table[j]==blockNum+1){
                     of_table[fileDesc].pinned_table[j]=0;          
                  }
-              }//Enhmerwnw to isdirty symfwna me tous kanones pou isxyoun
+              }//Update isdirty according to the applicable rules
               if(buffer[thesh].isdirty==FALSE){
                  buffer[thesh].isdirty=dirty;
               }
            }
            BF_errno=0;
-           return BF_errno;//Epityxia
+           return BF_errno;//Success
        }
     } 
     if(thesh<0){
        BF_errno=-4;
-       return BF_errno;//Den uparxei to block sthn endiamesh mnhmh
+       return BF_errno;//The block does not exist in the buffer
     }
 } 
 void BF_PrintError(char *errString){
@@ -578,61 +578,61 @@ void BF_PrintError(char *errString){
                            printf("OK\n");
                            break;
                       case -1:
-                           printf("elleipsi mnhmhs\n");
+                           printf("out of memory\n");
                            break;
-                      case -2: 
-                           printf("elleipsi xwrou endiamesis mnhmhs\n");
+                      case -2:
+                           printf("out of buffer space\n");
                            break;
-                      case -3: 
-                           printf("block idi 'karfwmeno' sthn mnhmh\n");
+                      case -3:
+                           printf("block already pinned in memory\n");
                            break;
-                      case -4: 
-                           printf("block gia 'ksekarfwma' den einai sthn mnhmh\n");
+                      case -4:
+                           printf("block to unpin is not in memory\n");
                            break;
-                      case -5: 
-                           printf("bloch idi sthn mnhmh\n");
+                      case -5:
+                           printf("block already in memory\n");
                            break;
-                      case -6: 
-                           printf("geniko sfalma Leitourgikou Systhmatos\n");
+                      case -6:
+                           printf("general OS error\n");
                            break;
-                      case -7: 
-                           printf("atelhs anagnwsi block\n");
+                      case -7:
+                           printf("incomplete block read\n");
                            break;
-                      case -8: 
-                           printf("ateles grapsimo se block\n");
+                      case -8:
+                           printf("incomplete block write\n");
                            break;
-                      case -9: 
-                           printf("atelhs anagnwsi block-kefalidas\n");
-                           break;     
-                      case -10: 
-                           printf("ateles grapsimo se block-kefalida\n");
+                      case -9:
+                           printf("incomplete header-block read\n");
                            break;
-                      case -11: 
-                           printf("mh egkyros anagnwristikos arithmos block\n");
+                      case -10:
+                           printf("incomplete header-block write\n");
                            break;
-                      case -12: 
-                           printf("arxeio idi anoixto\n");
+                      case -11:
+                           printf("invalid block identifier\n");
                            break;
-                      case -13: 
-                           printf("lista anoixtwn arxeiwn pliris\n");
+                      case -12:
+                           printf("file already open\n");
                            break;
-                      case -14: 
-                           printf("mh egkyros anagnwristikos arithmos arxeiou\n");
+                      case -13:
+                           printf("open file list is full\n");
                            break;
-                      case -15: 
-                           printf("telos arxeiou\n");
+                      case -14:
+                           printf("invalid file identifier\n");
                            break;
-                      case -16: 
-                           printf("block idi diathesimo\n");
+                      case -15:
+                           printf("end of file\n");
                            break;
-                      case -17: 
-                           printf("block idi 'ksekarfwmeno'\n");
+                      case -16:
+                           printf("block already available\n");
+                           break;
+                      case -17:
+                           printf("block already unpinned\n");
                            break;
                       case -18:
-                           printf("to arxeio den yparxei\n");
+                           printf("file does not exist\n");
                            break;
                       case -19:
-                           printf("to arxeio yparxei hdh\n");
+                           printf("file already exists\n");
                            break;    
                       }
 }

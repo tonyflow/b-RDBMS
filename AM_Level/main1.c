@@ -9,13 +9,13 @@
 #define AM_MAIN_EVENT_NAME_SIZE 60
 #define AM_MAIN_DATE_SIZE 11
 
-/*Μέγεθος της εγγραφής τύπου Athlete*/
+/*Size of the Athlete record*/
 #define AM_MAIN_ATHLETE_REC_SIZE sizeof(int) + 2*(sizeof(char) * AM_MAIN_NAME_SIZE)
 
-/*Μέγεθος της εγγραφής τύπου Event*/
+/*Size of the Event record*/
 #define AM_MAIN_EVENT_REC_SIZE sizeof(int) + (sizeof(char) * AM_MAIN_EVENT_NAME_SIZE)
 
-/*Μέγεθος της εγγραφής τύπου Participation*/
+/*Size of the Participation record*/
 #define AM_MAIN_PARTICIPATION_REC_SIZE 2*sizeof(int) + (sizeof(char) * AM_MAIN_DATE_SIZE)
 
 int main()
@@ -48,12 +48,12 @@ int main()
 	char partDate[AM_MAIN_DATE_SIZE];
 	int fores=0;
 
-	//Αρχικοποίηση Επιπέδου HF
+	//Initialize HF level
 	HF_Init();
-	//Αρχικοποίηση Επιπέδου AM
+	//Initialize AM level
 	AM_Init();
 
-	//’νοιγμα Αρχείου ATHLETES
+	//Open file ATHLETES
 	athletesFd = HF_OpenFile("ATHLETES");
 
 	if (athletesFd < 0)
@@ -62,7 +62,7 @@ int main()
 		return -1;
 	}
 
-	//’νοιγμα Αρχείου EVENTS
+	//Open file EVENTS
 	eventsFd = HF_OpenFile("EVENTS");
 
 	if (eventsFd < 0)
@@ -71,7 +71,7 @@ int main()
 		return -1;
 	}
 
-	//’νοιγμα Αρχείου PARTICIPATIONS
+	//Open file PARTICIPATIONS
 	partsFd = HF_OpenFile("PARTICIPATIONS");
 
 	if (partsFd < 0)
@@ -83,16 +83,16 @@ int main()
 
 
 	//----------------------------------------------\\
-	//   Κατασκευή ευρετηρίων στο αρχείο ATHLETES   \\
+	//   Create indexes for table ATHLETES          \\
 	//----------------------------------------------\\
-	
-	//Δημιουργία ευρετηρίου στο 1ο πεδίο του αρχείου ATHLETES
+
+	//Create index on the 1st field of table ATHLETES
 	if (AM_CreateIndex("ATHLETES", 0, 'i', sizeof(int)) != AME_OK)
 	{
 		AM_PrintError("Error in AM_CreateIndex called on ATHLETES.0.");
 	}
 
-	//’νοιγμα του 1ου ευρετηρίου στο αρχείο ATHLETES
+	//Open the 1st index of table ATHLETES
 	athletesIndexFd0 = AM_OpenIndex("ATHLETES", 0);
 
 	if (athletesIndexFd0 < 0)
@@ -101,13 +101,13 @@ int main()
 		return -1;
 	}
 
-	//Δημιουργία ευρετηρίου στο 2ο πεδίο του αρχείου ATHLETES
+	//Create index on the 2nd field of table ATHLETES
 	if (AM_CreateIndex("ATHLETES", 1, 'c', AM_MAIN_NAME_SIZE) != AME_OK)
 	{
 		AM_PrintError("Error in AM_CreateIndex called on ATHLETES.1.");
 	}
 
-	//’νοιγμα του 2ου ευρετηρίου στο αρχείο ATHLETES
+	//Open the 2nd index of table ATHLETES
 	athletesIndexFd1 = AM_OpenIndex("ATHLETES", 1);
 
 	if (athletesIndexFd1 < 0)
@@ -116,13 +116,13 @@ int main()
 		return -1;
 	}
 
-	//Δημιουργία ευρετηρίου στο 3ο πεδίο του αρχείου ATHLETES
+	//Create index on the 3rd field of table ATHLETES
 	if (AM_CreateIndex("ATHLETES", 2, 'c', AM_MAIN_NAME_SIZE) != AME_OK)
 	{
 		AM_PrintError("Error in AM_CreateIndex called on ATHLETES.2.");
 	}
 
-	//’νοιγμα του 3ου ευρετηρίου στο αρχείο ATHLETES
+	//Open the 3rd index of table ATHLETES
 	athletesIndexFd2 = AM_OpenIndex("ATHLETES", 2);
 
 	if (athletesIndexFd2 < 0)
@@ -138,7 +138,7 @@ int main()
 		return -1;
 	}
 
-	// Εισαγωγή δεδομένων στα ευρετήρια του αρχείου ATHLETES
+	// Read records and index entries of table ATHLETES
 	recId = HF_GetFirstRec(athletesFd, athleteRec, AM_MAIN_ATHLETE_REC_SIZE);
 	while (recId >= 0)
 	{
@@ -166,16 +166,16 @@ int main()
 
 
 	//----------------------------------------------\\
-	//    Κατασκευή ευρετηρίων στο αρχείο EVENTS    \\
+	//    Create indexes for table EVENTS           \\
 	//----------------------------------------------\\
 
-	//Δημιουργία ευρετηρίου στο 1ο πεδίο του αρχείου EVENTS
+	//Create index on the 1st field of table EVENTS
 	if (AM_CreateIndex("EVENTS", 0, 'i', sizeof(int)) != AME_OK)
 	{
 		AM_PrintError("Error in AM_CreateIndex called on EVENTS.0.");
 	}
 
-	//’νοιγμα του 1ου ευρετηρίου στο αρχείο EVENTS
+	//Open the 1st index of table EVENTS
 	eventsIndexFd0 = AM_OpenIndex("EVENTS", 0);
 
 	if (eventsIndexFd0 < 0)
@@ -184,13 +184,13 @@ int main()
 		return -1;
 	}
 
-	//Δημιουργία ευρετηρίου στο 2ο πεδίο του αρχείου EVENTS
+	//Create index on the 2nd field of table EVENTS
 	if (AM_CreateIndex("EVENTS", 1, 'c', AM_MAIN_EVENT_NAME_SIZE) != AME_OK)
 	{
 		AM_PrintError("Error in AM_CreateIndex called on EVENTS.1.");
 	}
 
-	//’νοιγμα του 2ου ευρετηρίου στο αρχείο EVENTS
+	//Open the 2nd index of table EVENTS
 	eventsIndexFd1 = AM_OpenIndex("EVENTS", 1);
 
 	if (eventsIndexFd1 < 0)
@@ -206,7 +206,7 @@ int main()
 		return -1;
 	}
 
-	// Εισαγωγή δεδομένων στα ευρετήρια του αρχείου EVENTS
+	// Read records and index entries of table EVENTS
 	recId = HF_GetFirstRec(eventsFd, eventRec, AM_MAIN_EVENT_REC_SIZE);
 	while (recId >= 0)
 	{
@@ -229,16 +229,16 @@ int main()
 
 
 	//------------------------------------------------\\
-	// Κατασκευή ευρετηρίων στο αρχείο PARTICIPATIONS \\
+	// Create indexes for table PARTICIPATIONS        \\
 	//------------------------------------------------\\
-	
-	//Δημιουργία ευρετηρίου στο 1ο πεδίο του αρχείου PARTICIPATIONS
+
+	//Create index on the 1st field of table PARTICIPATIONS
 	if (AM_CreateIndex("PARTICIPATIONS", 0, 'i', sizeof(int)) != AME_OK)
 	{
 		AM_PrintError("Error in AM_CreateIndex called on PARTICIPATIONS.0.");
 	}
 
-	//’νοιγμα του 1ου ευρετηρίου στο αρχείο PARTICIPATIONS
+	//Open the 1st index of table PARTICIPATIONS
 	partsIndexFd0 = AM_OpenIndex("PARTICIPATIONS", 0);
 
 	if (partsIndexFd0 < 0)
@@ -247,13 +247,13 @@ int main()
 		return -1;
 	}
 
-	//Δημιουργία ευρετηρίου στο 2ο πεδίο του αρχείου PARTICIPATIONS
+	//Create index on the 2nd field of table PARTICIPATIONS
 	if (AM_CreateIndex("PARTICIPATIONS", 1, 'i', sizeof(int)) != AME_OK)
 	{
 		AM_PrintError("Error in AM_CreateIndex called on PARTICIPATIONS.1.");
 	}
 
-	//’νοιγμα του 2ου ευρετηρίου στο αρχείο PARTICIPATIONS
+	//Open the 2nd index of table PARTICIPATIONS
 	partsIndexFd1 = AM_OpenIndex("PARTICIPATIONS", 1);
 
 	if (partsIndexFd1 < 0)
@@ -262,13 +262,13 @@ int main()
 		return -1;
 	}
 
-	//Δημιουργία ευρετηρίου στο 3ο πεδίο του αρχείου PARTICIPATIONS
+	//Create index on the 3rd field of table PARTICIPATIONS
 	if (AM_CreateIndex("PARTICIPATIONS", 2, 'c', AM_MAIN_DATE_SIZE) != AME_OK)
 	{
 		AM_PrintError("Error in AM_CreateIndex called on PARTICIPATIONS.2.");
 	}
 
-	//’νοιγμα του 3ου ευρετηρίου στο αρχείο PARTICIPATIONS
+	//Open the 3rd index of table PARTICIPATIONS
 	partsIndexFd2 = AM_OpenIndex("PARTICIPATIONS", 2);
 
 	if (partsIndexFd2 < 0)
@@ -284,7 +284,7 @@ int main()
 		return -1;
 	}
 
-	// Εισαγωγή δεδομένων στα ευρετήρια του αρχείου PARTICIPATIONS
+	// Read records and index entries of table PARTICIPATIONS
 	recId = HF_GetFirstRec(partsFd, partRec, AM_MAIN_PARTICIPATION_REC_SIZE);
 	while (recId >= 0)
 	{	printf("fores= %d\n",fores++);
@@ -314,7 +314,7 @@ int main()
 	free(eventRec);
 	free(partRec);
 
-	//Κλείσιμο Αρχείων
+	//Close files
 	if (HF_CloseFile(athletesFd) != HFE_OK)
 		HF_PrintError("Error in HF_CloseFile called on ATHLETES.");
 	if (HF_CloseFile(eventsFd) != HFE_OK)

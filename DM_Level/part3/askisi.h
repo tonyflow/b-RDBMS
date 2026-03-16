@@ -10,24 +10,24 @@
 #define MAXNAME 25
 
 typedef struct {
-	char relname[MAXNAME]; /* onoma pinaka */
-	int relwidth;		   /* euros eggrafhs pinaka se bytes */
-	int attrcnt;		   /* arithnos pediwn eggrafhs */
-	int indexcnt;		   /* arithmos eurethriwn pinaka */
-	int reccnt;		       /* arithmos egrafwn ths sxeshs */
+	char relname[MAXNAME]; /* table name */
+	int relwidth;		   /* record width in bytes */
+	int attrcnt;		   /* number of fields per record */
+	int indexcnt;		   /* number of indexes on the table */
+	int reccnt;		       /* number of records in the relation */
 } relDesc;	
 	
 typedef struct {
-	char relname[MAXNAME];	/* onoma pinaka */
-	char attrname[2*MAXNAME+sizeof(char)];	/* onoma pediou tou pinaka */
-	int offset;		        /* apostash arxhs pediou apo thn arxh ths eggrafhs se bytes */
-	int attrlength;		    /* mhkos pediou se bytes */
-	char attrtype;		    /* typos pediou ('i', 'f', h 'c') */
-	int valuecnt;		    /* arithmos diaforetikwn timwn pediou */
-	int indexed;		    /* TRUE an to pedio exei eurethrio */
-	int indexno;		    /* aukswn arithmos tou eurethriou an indexed=TRUE */
-	char min[4];            /* mikroterh timh tou pediou */ 
-	char max[4];            /* megaluterh timh tou pediou */
+	char relname[MAXNAME];	/* table name */
+	char attrname[2*MAXNAME+sizeof(char)];	/* field name of the table */
+	int offset;		        /* distance of field start from the beginning of the record in bytes */
+	int attrlength;		    /* field length in bytes */
+	char attrtype;		    /* field type ('i', 'f', or 'c') */
+	int valuecnt;		    /* number of distinct field values */
+	int indexed;		    /* TRUE if the field has an index */
+	int indexno;		    /* sequential number of the index if indexed=TRUE */
+	char min[4];            /* minimum value of the field */
+	char max[4];            /* maximum value of the field */
 } attrDesc;
 
 int relfileDesc;

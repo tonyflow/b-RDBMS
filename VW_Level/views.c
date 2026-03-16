@@ -14,9 +14,9 @@ int VW_CreateSelect(int argc, char* argv[]){
 	int scanDescattr;
 	char* rec;
 	int utc,j;
-	char** utcargs;    //pinakas mesa ston opoion tha ftiaksoume ta orismata ths UT_Create
+	char** utcargs;    //array in which we will build the arguments for UT_Create
 
-	//elegxos gia to an dinetai akribos mia sxesi i parapano
+	//check whether exactly one relation or more is given
 
 
 
@@ -40,9 +40,9 @@ int VW_CreateSelect(int argc, char* argv[]){
 	if(HF_CloseFileScan(scanDesc)<0)
 		HF_PrintError("Error while closing scan");
 	
-	if(found==0){//an den iparxei i opsi sto viewCat
+	if(found==0){//if the view does not exist in viewCat
 
-		//desmeush xorou gia ton pinaka utcargs gia na enimerosoume ta relcat,attrcat me UT_create
+		//allocate space for the utcargs array to update relcat,attrcat with UT_create
 		utcargs=malloc((2*atoi(argv[2])+2)*sizeof(char**));
 	
 		for(i=0;i<(2*atoi(argv[2])+2);i++)
@@ -51,12 +51,12 @@ int VW_CreateSelect(int argc, char* argv[]){
 		sprintf(utcargs[0],"%s","create");
 		sprintf(utcargs[1],"%s",argv[1]);
 	
-		for(i=2;i<(2*atoi(argv[2])+2);i++)//pername ston utcargs ta onomata ton pedion
+		for(i=2;i<(2*atoi(argv[2])+2);i++)//copy field names into utcargs
 			if(i%2==0)
 				sprintf(utcargs[i],"%s",argv[i+2]);
 			
 					
-		//skanaroume to attrCat gia na broume tous tipous ton pedion kai na tous perasoume ston utcargs	
+		//scan attrCat to find the field types and pass them into utcargs
 		j=3;
 		for(i=4;i<=(2*atoi(argv[2])+2);i=i+2){
 		
@@ -68,7 +68,7 @@ int VW_CreateSelect(int argc, char* argv[]){
 		check=HF_FindNextRec(scanDescattr,(char*)recattr);
 			
 		while(check!=HFE_EOF){
-			//brikame to probalomeno pedio san pedio tou relname
+			//found the projected field as a field of relname
 			if(strcmp(recattr.attrname,argv[i])==0){
 				recsize+=recattr.attrlength;
 				found=1;
@@ -78,7 +78,7 @@ int VW_CreateSelect(int argc, char* argv[]){
 				else
 					sprintf(utcargs[j],"%c",recattr.attrtype);
 				j+=2;	
-				//telos kataskeuhs
+				//end of construction
 				
 				break;
 			}
@@ -96,7 +96,7 @@ int VW_CreateSelect(int argc, char* argv[]){
 		}
 		
 
-		if((utc=UT_create(2*atoi(argv[2])+2,utcargs))!=0){//dimiourgia tis sxesis gia na enimerosoume ta Relcat kai Attrcat
+		if((utc=UT_create(2*atoi(argv[2])+2,utcargs))!=0){//create the relation to update Relcat and Attrcat
 			printf("View could not be created\n");
 			return -1;
 		}
@@ -106,7 +106,7 @@ int VW_CreateSelect(int argc, char* argv[]){
 		return -1;
 	}
 
-	//enimerosi ton Viewcat,Viewattrcat
+	//update Viewcat, Viewattrcat
 
 
 
@@ -132,7 +132,7 @@ int VW_CreateJoin(int argc, char* argv[]){
 
 
 
-int VW_Destroy(int argc, char* argv[]){//argv[0]=destroy,argv[1]=onoma opsis i p1,argv[2]=NULL
+int VW_Destroy(int argc, char* argv[]){//argv[0]=destroy,argv[1]=view name or p1,argv[2]=NULL
 
 	int scanDescview,scanDescview1,scanDescview2;
 	int scanDescrel,scanDescrel1,scanDescrel2;
@@ -146,7 +146,7 @@ int VW_Destroy(int argc, char* argv[]){//argv[0]=destroy,argv[1]=onoma opsis i p
 	
 	
 
-	if(strcmp(argv[0],"destroyMview")==0){//an prokeitai gia opsi
+	if(strcmp(argv[0],"destroyMview")==0){//if it is a view
 		
 		if((scanDescview=HF_OpenFileScan(viewfd,sizeof(viewDesc),'c',MAXNAME,0,EQUAL,argv[1]))<0)
 				HF_PrintError("Problem while opening file scan");
@@ -168,10 +168,10 @@ int VW_Destroy(int argc, char* argv[]){//argv[0]=destroy,argv[1]=onoma opsis i p
 	
 	
 	
-		if(found!=0){//an uparxei i opsi pou zitithike st viewCat
-					 // pame na psaksoume an i opsi xrisimopoieitai ws vasi gia kapoia alli
-					 
-			//akolouthoun duo parallila skanarismata sto viewcat gia ta relname1,relname2
+		if(found!=0){//if the requested view exists in viewCat
+					 // check if the view is used as a base for another view
+
+			//two parallel scans follow on viewcat for relname1, relname2
 			
 			if((scanDescview1=HF_OpenFileScan(viewfd,sizeof(viewDesc),'c',MAXNAME,0,EQUAL,argv[1]))<0)
 				HF_PrintError("Problem while opening file scan");
@@ -186,14 +186,14 @@ int VW_Destroy(int argc, char* argv[]){//argv[0]=destroy,argv[1]=onoma opsis i p
 			while(check1!=HFE_EOF && check2!=HFE_EOF){
 				if( strcmp(viewrel1.relname1,argv[1])==0 || strcmp(viewrel2.relname2,argv[1])==0){
 					flag=1;
-					printf("\nH zitoumeni opsi xrisimopoieitai ws vasi gia kapoia alli, opote den mporei na katasrtafei!!!\n");
+					printf("\nThe requested view is used as a base for another view, so it cannot be destroyed!!!\n");
 					return -1;
 				}
 
 				check1=HF_FindNextRec(scanDescview1,(char*)&viewrel1);
 				check2=HF_FindNextRec(scanDescview2,(char*)&viewrel2);
 
-			}//end tou while
+			}//end of while
 
 			if(HF_CloseFileScan(scanDescview1)<0)
 				HF_PrintError("SELECT : Error while closing scan");
@@ -204,20 +204,20 @@ int VW_Destroy(int argc, char* argv[]){//argv[0]=destroy,argv[1]=onoma opsis i p
 				
 				
 			if(flag==0){
-				//edw tha prepei na ginei to destroy
-				//diladi apla na kalesw tin DM_Delete me ta katallila orismata
-				//i UT_destroy kaleitai eksw sto telos
+				//here the destroy should be performed
+				//i.e. simply call DM_Delete with the appropriate arguments
+				//UT_destroy is called outside at the end
 			}
 
 		
-		}//end tou found!=0
+		}//end of found!=0
 		else{
-			printf("\nH opsi pou zitithike den uparxei sto viewCat...\n");
+			printf("\nThe requested view does not exist in viewCat...\n");
 			return -1;
 		}
 	
-	}//end tou if gia opsi
-	else if(strcmp(argv[0],"destroy")==0){ // an prokeitai gia prwtarxiko pinaka
+	}//end of if for view
+	else if(strcmp(argv[0],"destroy")==0){ // if it is a primary table
 	
 		if((scanDescrel=HF_OpenFileScan(relfd,sizeof(relDesc),'c',MAXNAME,0,EQUAL,argv[1]))<0)
 			HF_PrintError("Problem while opening file scan");
@@ -239,10 +239,10 @@ int VW_Destroy(int argc, char* argv[]){//argv[0]=destroy,argv[1]=onoma opsis i p
 			
 			
 			
-		if(found!=0){//an uparxei o prwtarxikos pinakas pou zitithike sto relCat
-                     // pame na psaksoume an o prwtarxikos pinakas xrisimopoieitai ws vasi gia kapoia alli
-                     
-            //akolouthoun duo parallila skanarismata sto relcat gia ta relname1,relname2
+		if(found!=0){//if the requested primary table exists in relCat
+                     // check if the primary table is used as a base for another view
+
+            //two parallel scans follow on relcat for relname1, relname2
             
             if((scanDescrel1=HF_OpenFileScan(relfd,sizeof(relDesc),'c',MAXNAME,0,EQUAL,argv[1]))<0)
 				HF_PrintError("Problem while opening file scan");
@@ -256,13 +256,13 @@ int VW_Destroy(int argc, char* argv[]){//argv[0]=destroy,argv[1]=onoma opsis i p
 			while(check1!=HFE_EOF && check2!=HFE_EOF){
 				if( strcmp(recrel1.relname1,argv[1])==0 || strcmp(recrel2.relname2,argv[1])==0){
 					flag=1;
-					printf("\nH zitoumeni opsi xrisimopoieitai ws vasi gia kapoia alli, opote den mporei na katasrtafei!!!\n");
+					printf("\nThe requested view is used as a base for another view, so it cannot be destroyed!!!\n");
 					return -1;
 				}
 
 				check1=HF_FindNextRec(scanDescview1,(char*)&recrel1);
 				check2=HF_FindNextRec(scanDescview2,(char*)&recrel2);
-			}// end tou while
+			}// end of while
 			
 			if(HF_CloseFileScan(scanDescrel1)<0)
 				HF_PrintError("SELECT : Error while closing scan");
@@ -272,9 +272,9 @@ int VW_Destroy(int argc, char* argv[]){//argv[0]=destroy,argv[1]=onoma opsis i p
 				
 
 		
-		}//end tou found!=0
+		}//end of found!=0
 		else{
-			printf("\nO prwtarxikos pinakas pou zitithike den uparxei sto relCat...\n");
+			printf("\nThe requested primary table does not exist in relCat...\n");
 			return -1;
 		}
 	
@@ -282,7 +282,7 @@ int VW_Destroy(int argc, char* argv[]){//argv[0]=destroy,argv[1]=onoma opsis i p
 	
 	}
 
-	UT_destroy(argv[0],argv[1]); // katastrefoume tin opsi i ton prwtarxiko pinaka pou zitithike
+	UT_destroy(argv[0],argv[1]); // destroy the view or the primary table that was requested
 	
 	
 
